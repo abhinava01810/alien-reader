@@ -175,7 +175,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
           return AlertDialog(
             title: const Row(
               children: [
-                Icon(Icons.lock_reset, color: AppColors.purple),
+                Icon(Icons.lock_reset_rounded, color: AppColors.purple),
                 SizedBox(width: 8),
                 Text('Account Recovery', style: TextStyle(fontSize: 18)),
               ],
@@ -194,7 +194,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                     controller: userCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Username',
-                      prefixIcon: Icon(Icons.person_outline),
+                      prefixIcon: Icon(Icons.person_outline_rounded),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -202,7 +202,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                     controller: contactCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Registered Email or Phone',
-                      prefixIcon: Icon(Icons.contact_mail_outlined),
+                      prefixIcon: Icon(Icons.contact_mail_rounded),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -211,7 +211,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                     obscureText: true,
                     decoration: const InputDecoration(
                       labelText: 'New Password',
-                      prefixIcon: Icon(Icons.lock_outline),
+                      prefixIcon: Icon(Icons.lock_outline_rounded),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -220,7 +220,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                     obscureText: true,
                     decoration: const InputDecoration(
                       labelText: 'Confirm New Password',
-                      prefixIcon: Icon(Icons.check_circle_outline),
+                      prefixIcon: Icon(Icons.check_circle_outline_rounded),
                     ),
                   ),
                   if (dialogError != null) ...[
@@ -387,8 +387,10 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppColors.darkSurfaceElevated
-                          : const Color(0xFFF1F3F6),
-                      borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
+                          : AppColors.lightSurfaceElevated,
+                      borderRadius: BorderRadius.circular(
+                        AppShapes.buttonRadius,
+                      ),
                     ),
                     padding: const EdgeInsets.all(4),
                     child: Row(
@@ -410,8 +412,8 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                               decoration: BoxDecoration(
                                 color: !_isRegistering
                                     ? (isDark
-                                        ? AppColors.darkSurface
-                                        : Colors.white)
+                                          ? AppColors.darkSurface
+                                          : AppColors.lightSurface)
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(
                                   AppShapes.buttonRadius - 3,
@@ -437,11 +439,11 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                                       : FontWeight.w500,
                                   color: !_isRegistering
                                       ? (isDark
-                                          ? AppColors.purpleMid
-                                          : AppColors.purple)
+                                            ? AppColors.purpleMid
+                                            : AppColors.purple)
                                       : (isDark
-                                          ? AppColors.darkTextMuted
-                                          : AppColors.lightTextMuted),
+                                            ? AppColors.darkTextMuted
+                                            : AppColors.lightTextMuted),
                                 ),
                               ),
                             ),
@@ -464,8 +466,8 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                               decoration: BoxDecoration(
                                 color: _isRegistering
                                     ? (isDark
-                                        ? AppColors.darkSurface
-                                        : Colors.white)
+                                          ? AppColors.darkSurface
+                                          : AppColors.lightSurface)
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(
                                   AppShapes.buttonRadius - 3,
@@ -491,11 +493,11 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                                       : FontWeight.w500,
                                   color: _isRegistering
                                       ? (isDark
-                                          ? AppColors.purpleMid
-                                          : AppColors.purple)
+                                            ? AppColors.purpleMid
+                                            : AppColors.purple)
                                       : (isDark
-                                          ? AppColors.darkTextMuted
-                                          : AppColors.lightTextMuted),
+                                            ? AppColors.darkTextMuted
+                                            : AppColors.lightTextMuted),
                                 ),
                               ),
                             ),
@@ -521,7 +523,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       child: Row(
                         children: [
                           const Icon(
-                            Icons.error_outline,
+                            Icons.error_outline_rounded,
                             color: AppColors.danger,
                             size: 20,
                           ),
@@ -555,7 +557,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       child: Row(
                         children: [
                           const Icon(
-                            Icons.check_circle_outline,
+                            Icons.check_circle_outline_rounded,
                             color: AppColors.success,
                             size: 20,
                           ),
@@ -585,7 +587,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Username',
                         hintText: 'Enter your registered username',
-                        prefixIcon: Icon(Icons.person_outline),
+                        prefixIcon: Icon(Icons.person_outline_rounded),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -597,12 +599,12 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       decoration: InputDecoration(
                         labelText: 'Password',
                         hintText: 'Enter your password',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureLoginPass
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
                             size: 20,
                           ),
                           onPressed: () {
@@ -652,7 +654,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Username *',
                         hintText: 'e.g. johndoe',
-                        prefixIcon: Icon(Icons.person_outline),
+                        prefixIcon: Icon(Icons.person_outline_rounded),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -663,7 +665,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Email Address (optional)',
                         hintText: 'name@example.com',
-                        prefixIcon: Icon(Icons.email_outlined),
+                        prefixIcon: Icon(Icons.email_rounded),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -674,7 +676,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Phone Number (optional)',
                         hintText: '+1 234 567 890',
-                        prefixIcon: Icon(Icons.phone_outlined),
+                        prefixIcon: Icon(Icons.phone_rounded),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -698,12 +700,12 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       decoration: InputDecoration(
                         labelText: 'Password *',
                         hintText: 'Minimum 6 characters',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureRegPass
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
                             size: 20,
                           ),
                           onPressed: () {
@@ -726,18 +728,19 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       decoration: InputDecoration(
                         labelText: 'Confirm Password *',
                         hintText: 'Re-enter your password',
-                        prefixIcon: const Icon(Icons.check_circle_outline),
+                        prefixIcon: const Icon(
+                          Icons.check_circle_outline_rounded,
+                        ),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureRegConfirmPass
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
                             size: 20,
                           ),
                           onPressed: () {
                             setState(() {
-                              _obscureRegConfirmPass =
-                                  !_obscureRegConfirmPass;
+                              _obscureRegConfirmPass = !_obscureRegConfirmPass;
                             });
                           },
                           tooltip: _obscureRegConfirmPass

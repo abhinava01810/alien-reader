@@ -55,4 +55,3 @@ class ThemeController extends ChangeNotifier {
     await prefs.setString(_themePrefsKey, modeString);
   }
 }
-

@@ -12,7 +12,4 @@ abstract class ReaderDevice {
   Future<void> finishScan();
 
   Future<List<String>> getFiles();
-
-  /// TODO: REAL RASPBERRY PI INTEGRATION
-  /// WAITING FOR DEVICE API / COMMUNICATION SPECIFICATION
 }

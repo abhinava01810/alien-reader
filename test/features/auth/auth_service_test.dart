@@ -14,25 +14,28 @@ void main() {
       authService = AuthService();
     });
 
-    test('register succeeds with valid username, email, and password', () async {
-      final account = await authService.register(
-        username: 'alice',
-        password: 'password123',
-        email: 'alice@alieninnovations.com',
-      );
+    test(
+      'register succeeds with valid username, email, and password',
+      () async {
+        final account = await authService.register(
+          username: 'alice',
+          password: 'password123',
+          email: 'alice@alieninnovations.com',
+        );
 
-      expect(account.username, equals('alice'));
-      expect(account.email, equals('alice@alieninnovations.com'));
-      expect(account.phone, isNull);
-      expect(account.passwordHash, isNot(contains('password123')));
-      expect(account.salt, isNotEmpty);
+        expect(account.username, equals('alice'));
+        expect(account.email, equals('alice@alieninnovations.com'));
+        expect(account.phone, isNull);
+        expect(account.passwordHash, isNot(contains('password123')));
+        expect(account.salt, isNotEmpty);
 
-      final isLogged = await authService.isLoggedIn();
-      expect(isLogged, isTrue);
+        final isLogged = await authService.isLoggedIn();
+        expect(isLogged, isTrue);
 
-      final currentUser = await authService.getCurrentUser();
-      expect(currentUser?.username, equals('alice'));
-    });
+        final currentUser = await authService.getCurrentUser();
+        expect(currentUser?.username, equals('alice'));
+      },
+    );
 
     test('register succeeds with phone number instead of email', () async {
       final account = await authService.register(
@@ -84,81 +87,81 @@ void main() {
       );
     });
 
-    test('login succeeds with correct password and fails with wrong password', () async {
-      await authService.register(
-        username: 'david',
-        password: 'mySecretPassword',
-        email: 'david@example.com',
-      );
-
-      // Wrong password
-      expect(
-        () => authService.login(
+    test(
+      'login succeeds with correct password and fails with wrong password',
+      () async {
+        await authService.register(
           username: 'david',
-          password: 'wrongPassword',
-        ),
-        throwsA(isA<AuthException>()),
-      );
+          password: 'mySecretPassword',
+          email: 'david@example.com',
+        );
 
-      // Non-existent user
-      expect(
-        () => authService.login(
-          username: 'unknown_user',
-          password: 'somePassword',
-        ),
-        throwsA(isA<AuthException>()),
-      );
+        // Wrong password
+        expect(
+          () => authService.login(username: 'david', password: 'wrongPassword'),
+          throwsA(isA<AuthException>()),
+        );
 
-      // Correct password
-      final loggedIn = await authService.login(
-        username: 'david',
-        password: 'mySecretPassword',
-      );
-      expect(loggedIn.username, equals('david'));
-      expect(await authService.isLoggedIn(), isTrue);
-    });
+        // Non-existent user
+        expect(
+          () => authService.login(
+            username: 'unknown_user',
+            password: 'somePassword',
+          ),
+          throwsA(isA<AuthException>()),
+        );
 
-    test('recoverPassword resets password when contact method matches', () async {
-      await authService.register(
-        username: 'eve',
-        password: 'oldPassword1',
-        email: 'eve@example.com',
-        phone: '1234567890',
-      );
+        // Correct password
+        final loggedIn = await authService.login(
+          username: 'david',
+          password: 'mySecretPassword',
+        );
+        expect(loggedIn.username, equals('david'));
+        expect(await authService.isLoggedIn(), isTrue);
+      },
+    );
 
-      // Mismatched contact method
-      expect(
-        () => authService.recoverPassword(
-          username: 'eve',
-          contactMethod: 'wrong@example.com',
-          newPassword: 'newPassword123',
-        ),
-        throwsA(isA<AuthException>()),
-      );
-
-      // Valid recovery with registered email
-      await authService.recoverPassword(
-        username: 'eve',
-        contactMethod: 'eve@example.com',
-        newPassword: 'newPassword123',
-      );
-
-      // Verify login with new password succeeds
-      final loggedIn = await authService.login(
-        username: 'eve',
-        password: 'newPassword123',
-      );
-      expect(loggedIn.username, equals('eve'));
-
-      // Verify login with old password fails
-      expect(
-        () => authService.login(
+    test(
+      'recoverPassword resets password when contact method matches',
+      () async {
+        await authService.register(
           username: 'eve',
           password: 'oldPassword1',
-        ),
-        throwsA(isA<AuthException>()),
-      );
-    });
+          email: 'eve@example.com',
+          phone: '1234567890',
+        );
+
+        // Mismatched contact method
+        expect(
+          () => authService.recoverPassword(
+            username: 'eve',
+            contactMethod: 'wrong@example.com',
+            newPassword: 'newPassword123',
+          ),
+          throwsA(isA<AuthException>()),
+        );
+
+        // Valid recovery with registered email
+        await authService.recoverPassword(
+          username: 'eve',
+          contactMethod: 'eve@example.com',
+          newPassword: 'newPassword123',
+        );
+
+        // Verify login with new password succeeds
+        final loggedIn = await authService.login(
+          username: 'eve',
+          password: 'newPassword123',
+        );
+        expect(loggedIn.username, equals('eve'));
+
+        // Verify login with old password fails
+        expect(
+          () => authService.login(username: 'eve', password: 'oldPassword1'),
+          throwsA(isA<AuthException>()),
+        );
+      },
+    );
 
     test('logout clears the active session', () async {
       await authService.register(
@@ -176,4 +179,3 @@ void main() {
     });
   });
 }
-

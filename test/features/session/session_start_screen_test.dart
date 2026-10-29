@@ -17,9 +17,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: SessionStartScreen(
-            onSessionStarted: (user, token) {},
-          ),
+          home: SessionStartScreen(onSessionStarted: (user, token) {}),
         ),
       );
       await tester.pumpAndSettle();
@@ -39,9 +37,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: SessionStartScreen(
-            onSessionStarted: (user, token) {},
-          ),
+          home: SessionStartScreen(onSessionStarted: (user, token) {}),
         ),
       );
       await tester.pumpAndSettle();
@@ -59,9 +55,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: SessionStartScreen(
-            onSessionStarted: (user, token) {},
-          ),
+          home: SessionStartScreen(onSessionStarted: (user, token) {}),
         ),
       );
       await tester.pumpAndSettle();
@@ -82,9 +76,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: SessionStartScreen(
-            onSessionStarted: (user, token) {},
-          ),
+          home: SessionStartScreen(onSessionStarted: (user, token) {}),
         ),
       );
       await tester.pumpAndSettle();

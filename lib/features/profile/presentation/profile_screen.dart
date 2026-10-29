@@ -14,6 +14,7 @@ import '../../../features/device/data/services/device_storage_service.dart';
 import '../../../features/device/domain/reader_device.dart';
 import '../../../features/document/data/services/document_storage_service.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/section_header.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -495,22 +496,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     IconData icon,
     String title,
   ) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 20,
-          color: isDark ? AppColors.purpleMid : AppColors.purple,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ],
-    );
+    return SectionHeader(title: title, icon: icon);
   }
 
   Widget _buildAccountCard(BuildContext context, bool isDark) {
@@ -717,23 +703,7 @@ class _InfoSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isDark ? AppColors.purpleMid : AppColors.purple,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (trailing != null) ...[const Spacer(), trailing!],
-          ],
-        ),
+        SectionHeader(title: title, icon: icon, trailing: trailing),
         const Divider(height: 20),
         ...rows.map(
           (row) => Padding(

@@ -9,6 +9,7 @@ import '../../../features/device/data/services/device_storage_service.dart';
 import '../../../features/device/domain/reader_device.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_dialogs.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../widgets/home_camera_placeholder.dart';
 import 'full_screen_camera_screen.dart';
 
@@ -96,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Dialog(
           backgroundColor: isDark
               ? AppColors.darkSurfaceElevated
-              : Colors.white,
+              : AppColors.lightSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppShapes.cardRadius),
           ),
@@ -128,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 220,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.black26 : AppColors.cloud,
+                    color: isDark ? AppColors.darkBackground : AppColors.cloud,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isDark
@@ -235,16 +236,16 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildFirstRunSetupCard(context, isDark),
         ] else ...[
           _buildDeviceStatusBar(context, isDark),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           _buildCameraCard(cameraHeight),
           const SizedBox(height: AppSpacing.md),
           _buildCaptureAndReadControls(isDark, isDeviceReady),
         ],
         if (widget.ocrFailureMessage != null) ...[
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           _buildOcrFailureBanner(),
         ],
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.md),
         _buildCapturedPagesSection(context, isDark),
         const SizedBox(height: AppSpacing.xl),
       ],
@@ -436,12 +437,12 @@ class _HomeScreenState extends State<HomeScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.purple,
                 disabledForegroundColor: isDark
-                    ? Colors.white24
+                    ? AppColors.darkBorder
                     : AppColors.gray,
                 side: BorderSide(
                   color: isDeviceReady
                       ? AppColors.purple
-                      : (isDark ? Colors.white12 : AppColors.gray),
+                      : (isDark ? AppColors.darkBorder : AppColors.gray),
                   width: 1.5,
                 ),
                 shape: RoundedRectangleBorder(
@@ -469,10 +470,10 @@ class _HomeScreenState extends State<HomeScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.orange,
                 disabledBackgroundColor: isDark
-                    ? Colors.white12
+                    ? AppColors.darkBorder
                     : AppColors.gray.withValues(alpha: 0.4),
                 foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white38,
+                disabledForegroundColor: AppColors.darkTextMuted,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
                 ),
@@ -522,44 +523,32 @@ class _HomeScreenState extends State<HomeScreen> {
   // 6. COMPACT CAPTURED PAGES THUMBNAIL STRIP (Adobe Scan Inspired)
   // ─────────────────────────────────────────────────────────────────────────
   Widget _buildCapturedPagesSection(BuildContext context, bool isDark) {
-    final theme = Theme.of(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Captured Pages',
-              style: theme.textTheme.titleMedium?.copyWith(
+        SectionHeader(
+          title: 'Captured Pages',
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(
+              color: widget.pageCount > 0
+                  ? AppColors.purple.withValues(alpha: 0.12)
+                  : (isDark ? AppColors.darkBorder : AppColors.cloud),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '${widget.pageCount} ${widget.pageCount == 1 ? 'Page' : 'Pages'}',
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
-                letterSpacing: -0.2,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-              decoration: BoxDecoration(
+                fontSize: 11.5,
                 color: widget.pageCount > 0
-                    ? AppColors.purple.withValues(alpha: 0.12)
-                    : (isDark ? Colors.white10 : AppColors.cloud),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '${widget.pageCount} ${widget.pageCount == 1 ? 'Page' : 'Pages'}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11.5,
-                  color: widget.pageCount > 0
-                      ? AppColors.purple
-                      : (isDark
-                            ? AppColors.darkTextMuted
-                            : AppColors.lightTextMuted),
-                ),
+                    ? AppColors.purple
+                    : (isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.lightTextMuted),
               ),
             ),
-          ],
+          ),
         ),
         const SizedBox(height: 10),
         widget.pageCount == 0
@@ -627,7 +616,9 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 76,
               margin: const EdgeInsets.only(right: 10),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
+                color: isDark
+                    ? AppColors.darkSurfaceElevated
+                    : AppColors.lightSurface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isSelected
@@ -665,7 +656,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: isDark
-                                ? Colors.white12
+                                ? AppColors.darkBorder
                                 : AppColors.gray.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(2),
                           ),
@@ -676,7 +667,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 38,
                           decoration: BoxDecoration(
                             color: isDark
-                                ? Colors.white12
+                                ? AppColors.darkBorder
                                 : AppColors.gray.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(2),
                           ),

@@ -52,7 +52,8 @@ class HomeCameraPlaceholder extends StatelessWidget {
             Positioned.fill(
               child: MjpegCameraView(
                 streamUrl: PiConfig.streamUrl,
-                active: status == ReaderConnectionStatus.connected ||
+                active:
+                    status == ReaderConnectionStatus.connected ||
                     status == ReaderConnectionStatus.busy,
               ),
             ),
@@ -65,7 +66,7 @@ class HomeCameraPlaceholder extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.videocam_off_outlined,
+                        Icons.videocam_off_rounded,
                         color: Colors.white.withValues(alpha: 0.35),
                         size: 38,
                       ),
@@ -81,10 +82,7 @@ class HomeCameraPlaceholder extends StatelessWidget {
                       const SizedBox(height: 4),
                       const Text(
                         'Connect to Naadh reader to start live stream',
-                        style: TextStyle(
-                          color: Colors.white38,
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: Colors.white38, fontSize: 11),
                       ),
                     ],
                   ),
@@ -123,7 +121,7 @@ class HomeCameraPlaceholder extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.circle, color: dotColor, size: 7),
+                      Icon(Icons.circle_rounded, color: dotColor, size: 7),
                       const SizedBox(width: 6),
                       Text(
                         labelText,

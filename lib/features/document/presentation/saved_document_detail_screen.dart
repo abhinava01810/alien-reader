@@ -127,7 +127,7 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             child: const Text('Delete'),
           ),
         ],
@@ -156,9 +156,9 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
         SnackBar(
           content: Text(msg),
           backgroundColor: success == true
-              ? Colors.green.shade700
+              ? AppColors.success
               : success == false
-              ? Colors.red.shade700
+              ? AppColors.danger
               : null,
         ),
       );
@@ -200,8 +200,8 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
         actions: [
           IconButton(
             onPressed: _confirmDelete,
-            icon: const Icon(Icons.delete_outline),
-            color: Colors.red.shade400,
+            icon: const Icon(Icons.delete_outline_rounded),
+            color: AppColors.danger,
             tooltip: 'Delete document',
           ),
         ],
@@ -222,20 +222,20 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
           // ── Extracted text ─────────────────────────────────────────
           _SavedSectionCard(
             title: 'Extracted Text',
-            icon: Icons.text_snippet_outlined,
+            icon: Icons.text_snippet_rounded,
             iconColor: AppColors.purpleMid,
             text: doc.originalText,
             isReading: _activeSection == 'original',
             onReadAloud: () => _toggleSpeak(doc.originalText, 'original'),
             actions: [
               _SectionAction(
-                icon: Icons.volume_up_outlined,
+                icon: Icons.volume_up_rounded,
                 label: _activeSection == 'original' ? 'Stop' : 'Read',
                 onTap: () => _toggleSpeak(doc.originalText, 'original'),
                 active: _activeSection == 'original',
               ),
               _SectionAction(
-                icon: Icons.text_snippet_outlined,
+                icon: Icons.text_snippet_rounded,
                 label: 'Save TXT',
                 onTap: () async {
                   _snackLoading('Saving…');
@@ -253,7 +253,7 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
                 },
               ),
               _SectionAction(
-                icon: Icons.picture_as_pdf_outlined,
+                icon: Icons.picture_as_pdf_rounded,
                 label: 'Save PDF',
                 onTap: () async {
                   _snackLoading('Generating PDF…');
@@ -276,18 +276,18 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
                 },
               ),
               _SectionAction(
-                icon: Icons.share_outlined,
+                icon: Icons.share_rounded,
                 label: 'Share Text',
                 onTap: () => _shareText(doc.originalText, 'original'),
               ),
               _SectionAction(
-                icon: Icons.picture_as_pdf_outlined,
+                icon: Icons.picture_as_pdf_rounded,
                 label: 'Share PDF',
                 onTap: () => _shareFile(doc.originalPdfPath, 'PDF'),
               ),
               if (doc.originalAudioPath != null)
                 _SectionAction(
-                  icon: Icons.audio_file_outlined,
+                  icon: Icons.audio_file_rounded,
                   label: 'Share Audio',
                   onTap: () =>
                       _shareFile(doc.originalAudioPath, 'Original Audio'),
@@ -299,20 +299,20 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
           // ── AI summary ─────────────────────────────────────────────
           _SavedSectionCard(
             title: 'AI Summary',
-            icon: Icons.auto_awesome_outlined,
+            icon: Icons.auto_awesome_rounded,
             iconColor: AppColors.orange,
             text: doc.summaryText,
             isReading: _activeSection == 'summary',
             onReadAloud: () => _toggleSpeak(doc.summaryText, 'summary'),
             actions: [
               _SectionAction(
-                icon: Icons.volume_up_outlined,
+                icon: Icons.volume_up_rounded,
                 label: _activeSection == 'summary' ? 'Stop' : 'Read',
                 onTap: () => _toggleSpeak(doc.summaryText, 'summary'),
                 active: _activeSection == 'summary',
               ),
               _SectionAction(
-                icon: Icons.text_snippet_outlined,
+                icon: Icons.text_snippet_rounded,
                 label: 'Save TXT',
                 onTap: () async {
                   _snackLoading('Saving…');
@@ -330,7 +330,7 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
                 },
               ),
               _SectionAction(
-                icon: Icons.picture_as_pdf_outlined,
+                icon: Icons.picture_as_pdf_rounded,
                 label: 'Save PDF',
                 onTap: () async {
                   _snackLoading('Generating PDF…');
@@ -353,18 +353,18 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
                 },
               ),
               _SectionAction(
-                icon: Icons.share_outlined,
+                icon: Icons.share_rounded,
                 label: 'Share Text',
                 onTap: () => _shareText(doc.summaryText, 'summary'),
               ),
               _SectionAction(
-                icon: Icons.picture_as_pdf_outlined,
+                icon: Icons.picture_as_pdf_rounded,
                 label: 'Share PDF',
                 onTap: () => _shareFile(doc.summaryPdfPath, 'Summary PDF'),
               ),
               if (doc.summaryAudioPath != null)
                 _SectionAction(
-                  icon: Icons.audio_file_outlined,
+                  icon: Icons.audio_file_rounded,
                   label: 'Share Audio',
                   onTap: () =>
                       _shareFile(doc.summaryAudioPath, 'Summary Audio'),
@@ -376,17 +376,17 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
           // ── Share complete document ────────────────────────────────
           FilledButton.icon(
             onPressed: _shareCompleteZip,
-            icon: const Icon(Icons.folder_zip_outlined),
+            icon: const Icon(Icons.folder_zip_rounded),
             label: const Text('Share Complete Document (ZIP)'),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _confirmDelete,
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Icons.delete_outline_rounded),
             label: const Text('Delete Document'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red.shade600,
-              side: BorderSide(color: Colors.red.shade300),
+              foregroundColor: AppColors.danger,
+              side: BorderSide(color: AppColors.danger),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -435,18 +435,12 @@ class _MetaChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.calendar_today_outlined,
+            Icons.calendar_today_rounded,
             size: 14,
-            color: isDark ? AppColors.darkTextMuted : Colors.black45,
+            color: context.mutedText,
           ),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? AppColors.darkTextMuted : Colors.black54,
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 12, color: context.mutedText)),
         ],
       ),
     );
@@ -471,7 +465,7 @@ class _LocalImageCard extends StatelessWidget {
           Row(
             children: [
               const Icon(
-                Icons.document_scanner_outlined,
+                Icons.document_scanner_rounded,
                 size: 18,
                 color: AppColors.purpleMid,
               ),
@@ -489,24 +483,27 @@ class _LocalImageCard extends StatelessWidget {
                 ? Image.file(file, fit: BoxFit.contain, width: double.infinity)
                 : Builder(
                     builder: (context) {
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      final isDark =
+                          Theme.of(context).brightness == Brightness.dark;
                       return Container(
                         height: 160,
-                        color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
+                        color: isDark
+                            ? AppColors.darkSurfaceElevated
+                            : AppColors.cloud,
                         child: Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                Icons.image_not_supported_outlined,
+                                Icons.image_not_supported_rounded,
                                 size: 32,
-                                color: isDark ? AppColors.darkTextMuted : Colors.black38,
+                                color: context.mutedText,
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Image file not found',
                                 style: TextStyle(
-                                  color: isDark ? AppColors.darkTextMuted : Colors.black54,
+                                  color: context.mutedText,
                                   fontSize: 12,
                                 ),
                               ),

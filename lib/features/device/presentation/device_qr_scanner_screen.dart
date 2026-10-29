@@ -127,10 +127,16 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
               builder: (context, state, child) {
                 switch (state.torchState) {
                   case TorchState.on:
-                    return const Icon(Icons.flash_on, color: Colors.amber);
+                    return const Icon(
+                      Icons.flash_on_rounded,
+                      color: Colors.amber,
+                    );
                   case TorchState.off:
                   default:
-                    return const Icon(Icons.flash_off, color: Colors.white);
+                    return const Icon(
+                      Icons.flash_off_rounded,
+                      color: Colors.white,
+                    );
                 }
               },
             ),
@@ -303,7 +309,7 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.no_photography_outlined,
+                Icons.no_photography_rounded,
                 size: 56,
                 color: Colors.white70,
               ),
@@ -352,7 +358,7 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
                     });
                     await _controller.start();
                   },
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(Icons.refresh_rounded),
                   label: const Text('Try Again'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.purple,

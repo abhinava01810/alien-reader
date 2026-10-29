@@ -36,10 +36,7 @@ class DocumentShareService {
       }
     }
     if (xFiles.isEmpty) throw Exception('No files available to share.');
-    await Share.shareXFiles(
-      xFiles,
-      subject: subject ?? 'Naadh',
-    );
+    await Share.shareXFiles(xFiles, subject: subject ?? 'Naadh');
   }
 
   // ─── Formatted text helpers ───────────────────────────────────────

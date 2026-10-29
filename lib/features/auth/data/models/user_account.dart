@@ -30,7 +30,8 @@ class UserAccount {
     phone: json['phone'] as String?,
     passwordHash: (json['password_hash'] ?? json['passwordHash']) as String,
     salt: json['salt'] as String,
-    createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+    createdAt:
+        DateTime.tryParse(json['created_at'] as String? ?? '') ??
         DateTime.now(),
   );
 
@@ -54,4 +55,3 @@ class UserAccount {
   String toString() =>
       'UserAccount(username: $username, email: $email, phone: $phone)';
 }
-

@@ -5,4 +5,7 @@ abstract final class AppSpacing {
   static const double lg = 16;
   static const double xl = 20;
   static const double xxl = 24;
+
+  /// Height shared by every full-width button.
+  static const double buttonHeight = 48;
 }

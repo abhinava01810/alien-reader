@@ -376,7 +376,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(Icons.close_rounded),
             tooltip: 'Cancel Setup',
             onPressed: _showExitConfirmationDialog,
           ),
@@ -417,7 +417,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.science_outlined, color: AppColors.orange, size: 22),
+          const Icon(Icons.science_rounded, color: AppColors.orange, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -517,7 +517,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                             ? AppColors.success
                             : (isCurrent ? AppColors.purple : AppColors.gray),
                         child: Icon(
-                          isDone ? Icons.check : Icons.circle,
+                          isDone ? Icons.check_rounded : Icons.circle_rounded,
                           size: 12,
                           color: Colors.white,
                         ),
@@ -582,7 +582,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               Row(
                 children: [
                   const Icon(
-                    Icons.fingerprint,
+                    Icons.fingerprint_rounded,
                     color: AppColors.purple,
                     size: 24,
                   ),
@@ -605,11 +605,11 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Enter the physical setup PIN or secret printed on the device label to authenticate local provisioning.',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.black54,
+                  color: context.mutedText,
                   height: 1.35,
                 ),
               ),
@@ -624,10 +624,12 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
             labelText: 'Device Setup PIN or Secret',
             hintText: 'e.g. 123456 or device secret',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            prefixIcon: const Icon(Icons.lock_outline),
+            prefixIcon: const Icon(Icons.lock_outline_rounded),
             suffixIcon: IconButton(
               icon: Icon(
-                _obscureSecret ? Icons.visibility_off : Icons.visibility,
+                _obscureSecret
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
               ),
               tooltip: _obscureSecret ? 'Show PIN' : 'Hide PIN',
               onPressed: () => setState(() => _obscureSecret = !_obscureSecret),
@@ -635,9 +637,9 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        const Text(
+        Text(
           'Note: Credentials are sent directly to the local Raspberry Pi over plain HTTP setup transport without intermediate cloud storage.',
-          style: TextStyle(fontSize: 11, color: Colors.black45),
+          style: TextStyle(fontSize: 11, color: context.mutedText),
         ),
         const SizedBox(height: AppSpacing.xl),
         FilledButton.icon(
@@ -651,7 +653,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                     color: Colors.white,
                   ),
                 )
-              : const Icon(Icons.login),
+              : const Icon(Icons.login_rounded),
           label: Text(_isLoading ? 'AUTHENTICATING…' : 'AUTHENTICATE DEVICE'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.purple,
@@ -682,7 +684,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.refresh, size: 20),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
               tooltip: 'Rescan Wi-Fi Networks',
               onPressed: _isLoading ? null : _loadNetworks,
             ),
@@ -714,7 +716,11 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
             ),
             child: Column(
               children: [
-                const Icon(Icons.wifi_off, size: 36, color: Colors.black38),
+                Icon(
+                  Icons.wifi_off_rounded,
+                  size: 36,
+                  color: context.mutedText,
+                ),
                 const SizedBox(height: 8),
                 const Text(
                   'No networks found nearby.',
@@ -723,7 +729,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _loadNetworks,
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(Icons.refresh_rounded),
                   label: const Text('Scan Again'),
                 ),
               ],
@@ -739,7 +745,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               final net = _networks[index];
               return ListTile(
                 leading: Icon(
-                  net.isOpen ? Icons.wifi : Icons.wifi_lock,
+                  net.isOpen ? Icons.wifi_rounded : Icons.wifi_lock_rounded,
                   color: AppColors.purple,
                 ),
                 title: Text(
@@ -753,7 +759,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                   '${net.security} • ${net.signalStrength}% signal',
                   style: const TextStyle(fontSize: 11.5),
                 ),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () {
                   setState(() {
                     _selectedNetwork = net;
@@ -778,7 +784,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               _currentStep = WifiOnboardingStep.enterPassword;
             });
           },
-          icon: const Icon(Icons.add),
+          icon: const Icon(Icons.add_rounded),
           label: const Text('Add Hidden / Custom Network'),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -809,7 +815,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              prefixIcon: const Icon(Icons.wifi),
+              prefixIcon: const Icon(Icons.wifi_rounded),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -822,7 +828,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
             ),
             child: Row(
               children: [
-                const Icon(Icons.wifi, color: AppColors.purple),
+                const Icon(Icons.wifi_rounded, color: AppColors.purple),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -851,10 +857,12 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
             labelText: 'Wi-Fi Password',
             hintText: 'Enter network passphrase',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            prefixIcon: const Icon(Icons.lock_outline),
+            prefixIcon: const Icon(Icons.lock_outline_rounded),
             suffixIcon: IconButton(
               icon: Icon(
-                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                _obscurePassword
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
               ),
               tooltip: _obscurePassword ? 'Show Password' : 'Hide Password',
               onPressed: () =>
@@ -863,9 +871,9 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Security Note: Wi-Fi passwords are transmitted to the reader and immediately wiped from app memory. Passwords are never saved in storage or telemetry.',
-          style: TextStyle(fontSize: 11, color: Colors.black45),
+          style: TextStyle(fontSize: 11, color: context.mutedText),
         ),
         const SizedBox(height: AppSpacing.xl),
         FilledButton.icon(
@@ -879,7 +887,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                     color: Colors.white,
                   ),
                 )
-              : const Icon(Icons.wifi),
+              : const Icon(Icons.wifi_rounded),
           label: const Text('CONNECT DEVICE TO WI-FI'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.purple,
@@ -919,7 +927,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           children: [
             const SizedBox(
               width: 56,
-              height: 56,
+              height: AppSpacing.buttonHeight,
               child: CircularProgressIndicator(
                 strokeWidth: 3.5,
                 color: AppColors.purple,
@@ -937,16 +945,16 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
             Text(
               'Attempt $_pollAttempts of $_maxPollAttempts…\nThe Raspberry Pi is applying the network configuration and verifying connection.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
-                color: Colors.black54,
+                color: context.mutedText,
                 height: 1.4,
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
             OutlinedButton.icon(
               onPressed: _cancelSetup,
-              icon: const Icon(Icons.cancel_outlined),
+              icon: const Icon(Icons.cancel_rounded),
               label: const Text('Cancel Connection Attempt'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.danger,
@@ -980,7 +988,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
             shape: BoxShape.circle,
           ),
           child: const Icon(
-            Icons.check_circle_outline,
+            Icons.check_circle_outline_rounded,
             color: AppColors.success,
             size: 56,
           ),
@@ -1002,7 +1010,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               ? 'The device successfully executed the simulated connection handshake with the test backend.'
               : 'Your Naadh reader is now configured to connect to your local Wi-Fi.',
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: Colors.black54),
+          style: TextStyle(fontSize: 13, color: context.mutedText),
         ),
         if (assignedIp != null && assignedIp.isNotEmpty && !isMock) ...[
           const SizedBox(height: AppSpacing.md),
@@ -1015,7 +1023,11 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.lan, size: 18, color: AppColors.purple),
+                const Icon(
+                  Icons.lan_rounded,
+                  size: 18,
+                  color: AppColors.purple,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Assigned IP: $assignedIp',
@@ -1044,13 +1056,13 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 '1. Ensure your phone reconnects to your home Wi-Fi network.\n'
                 '2. The reader is saved in your device list.\n'
                 '3. Open Naadh and tap Connect to begin scanning.',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.black87,
+                  color: context.strongText,
                   height: 1.4,
                 ),
               ),
@@ -1062,7 +1074,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           onPressed: () {
             Navigator.of(context).popUntil((route) => route.isFirst);
           },
-          icon: const Icon(Icons.home),
+          icon: const Icon(Icons.home_rounded),
           label: const Text('RETURN TO APPLICATION'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.purple,
@@ -1089,7 +1101,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
             shape: BoxShape.circle,
           ),
           child: const Icon(
-            Icons.error_outline,
+            Icons.error_outline_rounded,
             color: AppColors.danger,
             size: 56,
           ),
@@ -1107,7 +1119,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
         Text(
           _errorMessage ?? 'The device was unable to establish a connection.',
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: Colors.black54),
+          style: TextStyle(fontSize: 13, color: context.mutedText),
         ),
         const SizedBox(height: AppSpacing.xl),
         FilledButton.icon(
@@ -1117,7 +1129,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               _currentStep = WifiOnboardingStep.selectNetwork;
             });
           },
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(Icons.refresh_rounded),
           label: const Text('TRY AGAIN'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.purple,

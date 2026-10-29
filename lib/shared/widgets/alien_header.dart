@@ -68,7 +68,8 @@ class AlienHeader extends StatelessWidget implements PreferredSizeWidget {
         child: Divider(
           height: 1,
           thickness: 1,
-          color: theme.dividerTheme.color ??
+          color:
+              theme.dividerTheme.color ??
               (isDark ? AppColors.darkBorder : AppColors.lightBorder),
         ),
       ),

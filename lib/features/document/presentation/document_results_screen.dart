@@ -114,7 +114,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.text_snippet_outlined),
+              leading: const Icon(Icons.text_snippet_rounded),
               title: Text('Save as Text (.txt) — ${_sectionLabel(section)}'),
               onTap: () {
                 Navigator.pop(ctx);
@@ -122,7 +122,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.picture_as_pdf_outlined),
+              leading: const Icon(Icons.picture_as_pdf_rounded),
               title: Text('Save as PDF (.pdf) — ${_sectionLabel(section)}'),
               onTap: () {
                 Navigator.pop(ctx);
@@ -210,7 +210,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.text_fields_outlined),
+              leading: const Icon(Icons.text_fields_rounded),
               title: const Text('Share Text'),
               onTap: () {
                 Navigator.pop(ctx);
@@ -218,7 +218,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.picture_as_pdf_outlined),
+              leading: const Icon(Icons.picture_as_pdf_rounded),
               title: const Text('Share as PDF'),
               onTap: () {
                 Navigator.pop(ctx);
@@ -227,7 +227,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
             ),
             if (audioUrl != null)
               ListTile(
-                leading: const Icon(Icons.audio_file_outlined),
+                leading: const Icon(Icons.audio_file_rounded),
                 title: const Text('Share Audio'),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -285,10 +285,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
             ? _savedDocument!.originalAudioPath
             : _savedDocument!.summaryAudioPath;
         if (localPath != null && File(localPath).existsSync()) {
-          await _share.shareFile(
-            File(localPath),
-            subject: 'Naadh Audio',
-          );
+          await _share.shareFile(File(localPath), subject: 'Naadh Audio');
           return;
         }
       }
@@ -354,10 +351,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
     _snackLoading('Creating ZIP archive…');
     try {
       final zip = await _storage.createZip(_savedDocument!);
-      await _share.shareFile(
-        zip,
-        subject: 'Naadh — Complete Scan',
-      );
+      await _share.shareFile(zip, subject: 'Naadh — Complete Scan');
     } catch (e) {
       if (mounted) _snack('Share failed: $e', success: false);
     }
@@ -377,9 +371,9 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
         SnackBar(
           content: Text(msg),
           backgroundColor: success == true
-              ? Colors.green.shade700
+              ? AppColors.success
               : success == false
-              ? Colors.red.shade700
+              ? AppColors.danger
               : null,
           duration: duration,
         ),
@@ -424,7 +418,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
               'EXTRACTED TEXT:\n${widget.output.originalText}\n\n'
               'AI SUMMARY:\n${widget.output.summaryText}',
             ),
-            icon: const Icon(Icons.copy_outlined),
+            icon: const Icon(Icons.copy_rounded),
             tooltip: 'Copy all text',
           ),
         ],
@@ -444,7 +438,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
           // ── Extracted text section ────────────────────────────────
           _SectionCard(
             title: 'Extracted Text',
-            icon: Icons.text_snippet_outlined,
+            icon: Icons.text_snippet_rounded,
             iconColor: AppColors.purpleMid,
             text: widget.output.originalText,
             isReading: _activeSection == 'original',
@@ -467,7 +461,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
           // ── AI summary section ────────────────────────────────────
           _SectionCard(
             title: 'AI Summary',
-            icon: Icons.auto_awesome_outlined,
+            icon: Icons.auto_awesome_rounded,
             iconColor: AppColors.orange,
             text: widget.output.summaryText,
             isReading: _activeSection == 'summary',
@@ -497,7 +491,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Icon(Icons.save_outlined),
+                      : const Icon(Icons.save_rounded),
                   label: Text(
                     _savingComplete ? 'Saving…' : 'Save Complete Document',
                   ),
@@ -507,19 +501,23 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
                     // Already saved — show share complete option
                     OutlinedButton.icon(
                       onPressed: _shareCompleteDocument,
-                      icon: const Icon(Icons.folder_zip_outlined),
+                      icon: const Icon(Icons.folder_zip_rounded),
                       label: const Text('Share Complete Document (ZIP)'),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.check_circle, color: Colors.green, size: 16),
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: AppColors.success,
+                          size: 16,
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'Saved to Files tab',
                           style: TextStyle(
-                            color: Colors.green,
+                            color: AppColors.success,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -533,7 +531,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
           OutlinedButton.icon(
             onPressed: () =>
                 Navigator.of(context).popUntil((route) => route.isFirst),
-            icon: const Icon(Icons.home_outlined),
+            icon: const Icon(Icons.home_rounded),
             label: const Text('Return Home'),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -590,7 +588,7 @@ class _CapturedImageCard extends StatelessWidget {
           Row(
             children: [
               const Icon(
-                Icons.document_scanner_outlined,
+                Icons.document_scanner_rounded,
                 size: 18,
                 color: AppColors.purpleMid,
               ),
@@ -630,11 +628,14 @@ class _CapturedImageCard extends StatelessWidget {
                       );
                     },
                     errorBuilder: (context, error, stackTrace) {
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      final isDark =
+                          Theme.of(context).brightness == Brightness.dark;
                       return Container(
                         height: 180,
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
+                          color: isDark
+                              ? AppColors.darkSurfaceElevated
+                              : AppColors.cloud,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Center(
@@ -642,15 +643,15 @@ class _CapturedImageCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                Icons.image_not_supported_outlined,
-                                color: isDark ? AppColors.darkTextMuted : Colors.black38,
+                                Icons.image_not_supported_rounded,
+                                color: context.mutedText,
                                 size: 32,
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Image unavailable',
                                 style: TextStyle(
-                                  color: isDark ? AppColors.darkTextMuted : Colors.black54,
+                                  color: context.mutedText,
                                   fontSize: 12,
                                 ),
                               ),
@@ -714,13 +715,13 @@ class _SectionCard extends StatelessWidget {
               // Copy
               IconButton(
                 onPressed: onCopy,
-                icon: const Icon(Icons.copy_outlined, size: 18),
+                icon: const Icon(Icons.copy_rounded, size: 18),
                 tooltip: 'Copy',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 color: Theme.of(context).brightness == Brightness.dark
                     ? AppColors.darkTextMuted
-                    : Colors.black45,
+                    : context.mutedText,
               ),
               const SizedBox(width: 4),
               // TTS toggle
@@ -735,7 +736,7 @@ class _SectionCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _ActionButton(
-                  icon: Icons.save_outlined,
+                  icon: Icons.save_rounded,
                   label: 'Save ▼',
                   onPressed: onSave,
                 ),
@@ -743,7 +744,7 @@ class _SectionCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _ActionButton(
-                  icon: Icons.share_outlined,
+                  icon: Icons.share_rounded,
                   label: 'Share ▼',
                   onPressed: onShare,
                   outlined: true,
@@ -793,13 +794,13 @@ class _TtsButton extends StatelessWidget {
         icon: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
           child: Icon(
-            isReading ? Icons.stop_circle_outlined : Icons.volume_up_outlined,
+            isReading ? Icons.stop_circle_rounded : Icons.volume_up_rounded,
             key: ValueKey(isReading),
             color: isReading
                 ? AppColors.orange
                 : (Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkTextMuted
-                    : Colors.black45),
+                      ? AppColors.darkTextMuted
+                      : context.mutedText),
             size: 22,
           ),
         ),

@@ -23,7 +23,8 @@ class AppBottomNav extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: theme.dividerTheme.color ??
+            color:
+                theme.dividerTheme.color ??
                 (isDark ? AppColors.darkBorder : AppColors.lightBorder),
             width: 1.0,
           ),

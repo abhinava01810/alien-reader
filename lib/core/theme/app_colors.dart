@@ -31,3 +31,13 @@ abstract final class AppColors {
   static const Color purpleLightTint = Color(0xFFF5F0FF);
   static const Color purpleDarkTint = Color(0xFF2B1D45);
 }
+
+/// Brightness-aware text colors for widgets that only have a [BuildContext].
+extension AppColorContext on BuildContext {
+  bool get _isDark => Theme.of(this).brightness == Brightness.dark;
+
+  Color get mutedText =>
+      _isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+
+  Color get strongText => _isDark ? AppColors.darkText : AppColors.lightText;
+}

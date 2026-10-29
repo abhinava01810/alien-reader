@@ -426,11 +426,7 @@ class _FilesScreenState extends State<FilesScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 40,
-              color: isDark ? AppColors.darkTextMuted : Colors.black38,
-            ),
+            Icon(Icons.cloud_off_rounded, size: 40, color: context.mutedText),
             const SizedBox(height: 12),
             Text(
               error,
@@ -661,10 +657,7 @@ class _SessionCaptureCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: isDark ? AppColors.darkTextMuted : Colors.black38,
-              ),
+              Icon(Icons.chevron_right_rounded, color: context.mutedText),
             ],
           ),
         ),
@@ -677,11 +670,7 @@ class _SessionCaptureCard extends StatelessWidget {
     return Container(
       color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
       child: Center(
-        child: Icon(
-          Icons.image_rounded,
-          color: isDark ? AppColors.darkTextMuted : Colors.black38,
-          size: 24,
-        ),
+        child: Icon(Icons.image_rounded, color: context.mutedText, size: 24),
       ),
     );
   }

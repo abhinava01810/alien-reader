@@ -25,7 +25,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
         foregroundColor: theme.appBarTheme.foregroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Back to Application',
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -45,7 +45,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
               _buildNextStepNotice(context, isDark),
               const SizedBox(height: AppSpacing.xl),
               SizedBox(
-                height: 50,
+                height: AppSpacing.buttonHeight,
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).pushNamed(
@@ -53,13 +53,15 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                       arguments: payload.deviceId,
                     );
                   },
-                  icon: const Icon(Icons.wifi),
+                  icon: const Icon(Icons.wifi_rounded),
                   label: const Text('CONFIGURE WI-FI'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.purple,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
+                      borderRadius: BorderRadius.circular(
+                        AppShapes.buttonRadius,
+                      ),
                     ),
                   ),
                 ),
@@ -70,12 +72,16 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? AppColors.darkText : AppColors.charcoal,
+                    foregroundColor: isDark
+                        ? AppColors.darkText
+                        : AppColors.charcoal,
                     side: BorderSide(
                       color: isDark ? AppColors.darkBorder : AppColors.gray,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
+                      borderRadius: BorderRadius.circular(
+                        AppShapes.buttonRadius,
+                      ),
                     ),
                   ),
                   child: const Text('Cancel / Return to App'),
@@ -133,13 +139,15 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                               ? AppColors.success
                               : (step.isActive
                                     ? AppColors.purple
-                                    : (isDark ? Colors.white12 : AppColors.gray)),
+                                    : (isDark
+                                          ? AppColors.darkBorder
+                                          : AppColors.gray)),
                           child: Icon(
                             step.isComplete
-                                ? Icons.check
+                                ? Icons.check_rounded
                                 : (step.isActive
-                                      ? Icons.fingerprint
-                                      : Icons.wifi),
+                                      ? Icons.fingerprint_rounded
+                                      : Icons.wifi_rounded),
                             size: 16,
                             color: Colors.white,
                           ),
@@ -154,8 +162,12 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                                 ? FontWeight.bold
                                 : FontWeight.w500,
                             color: step.isActive
-                                ? (isDark ? AppColors.purpleMid : AppColors.purple)
-                                : (isDark ? AppColors.darkTextMuted : AppColors.charcoal),
+                                ? (isDark
+                                      ? AppColors.purpleMid
+                                      : AppColors.purple)
+                                : (isDark
+                                      ? AppColors.darkTextMuted
+                                      : AppColors.charcoal),
                           ),
                         ),
                       ],
@@ -167,7 +179,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                       height: 2,
                       color: steps[idx].isComplete
                           ? AppColors.success
-                          : (isDark ? Colors.white12 : AppColors.gray),
+                          : (isDark ? AppColors.darkBorder : AppColors.gray),
                     ),
                 ],
               ),
@@ -182,7 +194,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         borderRadius: BorderRadius.circular(AppShapes.cardRadius),
         border: Border.all(
           color: isDark
@@ -209,7 +221,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.qr_code_2,
+              Icons.qr_code_2_rounded,
               size: 48,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
             ),
@@ -288,7 +300,11 @@ class DeviceIdentifiedScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline, color: AppColors.orange, size: 24),
+          const Icon(
+            Icons.info_outline_rounded,
+            color: AppColors.orange,
+            size: 24,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -339,7 +355,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.network_wifi,
+                Icons.network_wifi_rounded,
                 size: 20,
                 color: isDark ? AppColors.purpleMid : AppColors.purpleMid,
               ),
@@ -358,7 +374,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
             'Authenticate with the device-specific PIN/secret printed on your reader, select your local Wi-Fi network, and securely transfer credentials to the device.',
             style: TextStyle(
               fontSize: 12.5,
-              color: isDark ? AppColors.darkTextMuted : Colors.black54,
+              color: context.mutedText,
               height: 1.4,
             ),
           ),
