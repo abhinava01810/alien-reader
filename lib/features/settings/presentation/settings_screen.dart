@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/pi_config.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/section_header.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -19,18 +20,21 @@ class SettingsScreen extends StatelessWidget {
       builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              0,
+              AppSpacing.xl,
+              AppSpacing.xxl,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Appearance & Theme',
-                  style: Theme.of(
-                    ctx,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                const SectionHeader(
+                  title: 'Appearance & Theme',
+                  icon: Icons.palette_rounded,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 ListTile(
                   leading: Icon(
                     Icons.brightness_auto_rounded,
@@ -114,7 +118,7 @@ class SettingsScreen extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             SizedBox(height: 6),
-            Text('Version: 1.0.0+1 (Production Ready)'),
+            Text('Version ${AppStrings.appVersion}'),
             SizedBox(height: 12),
             Text(
               'AI-powered document capture, OCR text extraction, multi-lingual audio synthesis, and intelligent document summarization for the visually impaired and modern readers.',
@@ -182,14 +186,14 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SectionHeader(title: 'Device', icon: Icons.memory_rounded),
-                const SizedBox(height: 8),
+                const Divider(height: 20),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
@@ -207,7 +211,6 @@ class SettingsScreen extends StatelessWidget {
                     Navigator.of(context).pushNamed(AppRoutes.deviceQrScanner);
                   },
                 ),
-                const Divider(height: 16),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
@@ -253,7 +256,7 @@ class SettingsScreen extends StatelessWidget {
                   title: 'Appearance & Theme',
                   icon: Icons.palette_rounded,
                 ),
-                const SizedBox(height: 8),
+                const Divider(height: 20),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
@@ -287,7 +290,7 @@ class SettingsScreen extends StatelessWidget {
                   title: 'Scanning & Processing',
                   icon: Icons.document_scanner_rounded,
                 ),
-                const SizedBox(height: 8),
+                const Divider(height: 20),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
@@ -330,7 +333,7 @@ class SettingsScreen extends StatelessWidget {
                   title: 'Audio & Synthesis',
                   icon: Icons.graphic_eq_rounded,
                 ),
-                const SizedBox(height: 8),
+                const Divider(height: 20),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
@@ -370,7 +373,7 @@ class SettingsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SectionHeader(title: 'About', icon: Icons.info_rounded),
-                const SizedBox(height: 8),
+                const Divider(height: 20),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
