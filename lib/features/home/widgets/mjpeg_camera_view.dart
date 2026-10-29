@@ -254,7 +254,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
-                Icons.videocam_off_rounded,
+                Icons.videocam_off_outlined,
                 color: Colors.white38,
                 size: 36,
               ),
@@ -272,7 +272,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
               OutlinedButton.icon(
                 onPressed: _connect,
                 icon: const Icon(
-                  Icons.refresh_rounded,
+                  Icons.refresh,
                   size: 16,
                   color: AppColors.orange,
                 ),
@@ -314,7 +314,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
       gaplessPlayback: true, // prevents black flash between frames
       errorBuilder: (context, error, stackTrace) => const Center(
         child: Icon(
-          Icons.broken_image_rounded,
+          Icons.broken_image_outlined,
           color: Colors.white38,
           size: 32,
         ),
