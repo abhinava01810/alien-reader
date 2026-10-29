@@ -1,14 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:alien_reader_app/features/device/data/models/saved_device.dart';
+import 'package:alien_reader_app/features/device/data/services/device_storage_service.dart';
 import 'package:alien_reader_app/features/device/domain/reader_device.dart';
 import 'package:alien_reader_app/features/home/presentation/home_screen.dart';
 
+Future<void> _seedDevice() async {
+  SharedPreferences.setMockInitialValues({});
+  await DeviceStorageService().saveDevice(
+    SavedDevice(
+      deviceId: 'naadh-test',
+      createdAt: DateTime(2026),
+    ),
+  );
+}
+
 void main() {
+  setUp(() async => _seedDevice());
   group('HomeScreen Layout & Priority Order Tests', () {
-    testWidgets('renders first section: Connect via Wi-Fi / Scan QR card', (
+    testWidgets('shows first-run setup card when no device is saved', (
       WidgetTester tester,
     ) async {
+      SharedPreferences.setMockInitialValues({});
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -24,16 +40,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Connect via Wi-Fi / Scan QR'), findsOneWidget);
-      expect(
-        find.text('Scan your Naadh device QR to connect or configure Wi-Fi'),
-        findsOneWidget,
-      );
-      expect(find.byIcon(Icons.qr_code_scanner_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.wifi_rounded), findsOneWidget);
+      expect(find.text('Set up your Naadh reader'), findsOneWidget);
+      expect(find.text('Scan QR code'), findsOneWidget);
+      expect(find.text('Reconnect'), findsNothing);
+      expect(find.text('Capture page'), findsNothing);
     });
 
-    testWidgets('renders Live Camera section with compact Connect to Device button when disconnected', (
+    testWidgets('shows Disconnected status bar with Reconnect when disconnected', (
       WidgetTester tester,
     ) async {
       var connectPressed = false;
@@ -53,11 +66,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Live Camera'), findsOneWidget);
       expect(find.text('Disconnected'), findsOneWidget);
-      expect(find.text('Connect to Device'), findsOneWidget);
+      expect(find.text('Reconnect'), findsOneWidget);
 
-      await tester.tap(find.text('Connect to Device'));
+      await tester.tap(find.text('Reconnect'));
       expect(connectPressed, isTrue);
 
       // Verify removed items are NOT present
@@ -87,16 +99,20 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Live Camera'), findsOneWidget);
       expect(find.text('Connected'), findsOneWidget);
-      expect(find.text('Connected to Naadh Reader'), findsOneWidget);
       expect(find.text('Disconnect'), findsOneWidget);
 
       await tester.tap(find.text('Disconnect'));
+      await tester.pumpAndSettle();
+      expect(disconnectPressed, isFalse);
+      expect(find.text('Disconnect reader?'), findsOneWidget);
+
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
       expect(disconnectPressed, isTrue);
     });
 
-    testWidgets('renders Capture Page and Process buttons with correct states', (
+    testWidgets('renders Capture page and Read buttons with correct states', (
       WidgetTester tester,
     ) async {
       var capturePressed = false;
@@ -117,13 +133,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Capture Page'), findsOneWidget);
-      expect(find.text('Process'), findsOneWidget);
+      expect(find.text('Capture page'), findsOneWidget);
+      expect(find.text('Read 2 pages'), findsOneWidget);
 
-      await tester.tap(find.text('Capture Page'));
+      await tester.tap(find.text('Capture page'));
       expect(capturePressed, isTrue);
 
-      await tester.tap(find.text('Process'));
+      await tester.tap(find.text('Read 2 pages'));
       expect(processPressed, isTrue);
     });
 

@@ -11,14 +11,19 @@ class FullScreenCameraScreen extends StatelessWidget {
     super.key,
     required this.status,
     this.onCapture,
+    this.onProcess,
+    this.pageCount = 0,
   });
 
   final ReaderConnectionStatus status;
   final VoidCallback? onCapture;
+  final VoidCallback? onProcess;
+  final int pageCount;
 
   @override
   Widget build(BuildContext context) {
-    final isDeviceReady = status == ReaderConnectionStatus.connected ||
+    final isDeviceReady =
+        status == ReaderConnectionStatus.connected ||
         status == ReaderConnectionStatus.busy;
 
     final (labelText, dotColor) = switch (status) {
@@ -72,8 +77,11 @@ class FullScreenCameraScreen extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.6),
                     shape: const CircleBorder(),
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      tooltip: 'Exit Full Screen',
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                      ),
+                      tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ),
@@ -92,7 +100,7 @@ class FullScreenCameraScreen extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.circle, color: dotColor, size: 8),
+                        Icon(Icons.circle_rounded, color: dotColor, size: 8),
                         const SizedBox(width: 8),
                         Text(
                           labelText,
@@ -110,50 +118,106 @@ class FullScreenCameraScreen extends StatelessWidget {
               ),
             ),
 
-            // ── Bottom Capture Shutter Button ────────────────────────
-            if (onCapture != null && isDeviceReady) ...[
-              Positioned(
-                bottom: 24,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        onCapture!();
-                        Navigator.of(context).pop();
-                      },
-                      customBorder: const CircleBorder(),
+            // ── Bottom bar: page counter, shutter, Read ──────────────
+            Positioned(
+              bottom: 24,
+              left: 16,
+              right: 16,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
                       child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
-                        child: Container(
-                          width: 58,
-                          height: 58,
-                          decoration: const BoxDecoration(
-                            color: AppColors.orange,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 28,
-                          ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.article_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$pageCount ${pageCount == 1 ? 'page' : 'pages'}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                ),
+                  if (onCapture != null && isDeviceReady)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          onCapture!();
+                          Navigator.of(context).pop();
+                        },
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                          ),
+                          child: Container(
+                            width: 58,
+                            height: 58,
+                            decoration: const BoxDecoration(
+                              color: AppColors.orange,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.photo_camera_rounded,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: onProcess != null && pageCount > 0
+                          ? FilledButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                onProcess!();
+                              },
+                              icon: const Icon(
+                                Icons.graphic_eq_rounded,
+                                size: 18,
+                              ),
+                              label: const Text('Read'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.orange,
+                                foregroundColor: Colors.white,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
     );
   }
 }
-
