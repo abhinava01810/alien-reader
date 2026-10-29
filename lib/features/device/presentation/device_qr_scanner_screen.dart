@@ -23,8 +23,9 @@ class DeviceQrScannerScreen extends StatefulWidget {
 }
 
 class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late final MobileScannerController _controller;
+  late final AnimationController _scanLine;
   bool _hasProcessed = false;
   String? _errorMessage;
 
@@ -37,6 +38,10 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
       formats: const [BarcodeFormat.qrCode],
       autoStart: true,
     );
+    _scanLine = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -55,6 +60,7 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _scanLine.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -111,10 +117,10 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.darkBackground,
+        foregroundColor: AppColors.darkText,
         elevation: 0,
         title: const Text(
           'Scan Device QR Code',
@@ -129,13 +135,13 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
                   case TorchState.on:
                     return const Icon(
                       Icons.flash_on_rounded,
-                      color: Colors.amber,
+                      color: AppColors.orange,
                     );
                   case TorchState.off:
                   default:
                     return const Icon(
                       Icons.flash_off_rounded,
-                      color: Colors.white,
+                      color: AppColors.darkText,
                     );
                 }
               },
@@ -162,71 +168,91 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
     );
   }
 
+  /// Dimmed surround with a rounded cut-out, corner brackets and a scan line.
   Widget _buildScannerOverlay(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final scanBoxSize = size.width * 0.72;
+    final boxSize = size.width * 0.72;
 
-    return Center(
-      child: Container(
-        width: scanBoxSize,
-        height: scanBoxSize,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.purpleMid, width: 3),
-        ),
-        child: Stack(
-          children: [
-            // Corner accents
-            Positioned(top: 0, left: 0, child: _cornerAccent(topLeft: true)),
-            Positioned(top: 0, right: 0, child: _cornerAccent(topRight: true)),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              child: _cornerAccent(bottomLeft: true),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        IgnorePointer(
+          child: CustomPaint(
+            painter: _ViewfinderPainter(
+              boxSize: boxSize,
+              scrim: AppColors.darkBackground.withValues(alpha: 0.62),
+              bracket: AppColors.purpleMid,
             ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: _cornerAccent(bottomRight: true),
+          ),
+        ),
+        Center(
+          child: IgnorePointer(
+            child: SizedBox(
+              width: boxSize,
+              height: boxSize,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  _ViewfinderPainter.cornerRadius,
+                ),
+                child: AnimatedBuilder(
+                  animation: _scanLine,
+                  builder: (context, _) {
+                    const lineHeight = 3.0;
+                    final top = _scanLine.value * (boxSize - lineHeight);
+                    return Stack(
+                      children: [
+                        Positioned(
+                          top: top,
+                          left: 12,
+                          right: 12,
+                          child: Container(
+                            height: lineHeight,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(2),
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.orange.withValues(alpha: 0),
+                                  AppColors.orange.withValues(alpha: 0.9),
+                                  AppColors.orange.withValues(alpha: 0),
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.orange.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _cornerAccent({
-    bool topLeft = false,
-    bool topRight = false,
-    bool bottomLeft = false,
-    bool bottomRight = false,
-  }) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: AppColors.purple,
-        borderRadius: BorderRadius.only(
-          topLeft: topLeft ? const Radius.circular(12) : Radius.zero,
-          topRight: topRight ? const Radius.circular(12) : Radius.zero,
-          bottomLeft: bottomLeft ? const Radius.circular(12) : Radius.zero,
-          bottomRight: bottomRight ? const Radius.circular(12) : Radius.zero,
-        ),
-      ),
+      ],
     );
   }
 
   Widget _buildInstructionBanner() {
     return Positioned(
-      top: 24,
-      left: 20,
-      right: 20,
+      top: AppSpacing.xxl,
+      left: AppSpacing.xl,
+      right: AppSpacing.xl,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.75),
+          color: AppColors.darkSurface.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(AppShapes.cardRadius),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          border: Border.all(color: AppColors.darkBorder),
         ),
         child: const Column(
           children: [
@@ -234,16 +260,16 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
               'Align the Naadh device QR code inside the frame',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.darkText,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 4),
+            SizedBox(height: AppSpacing.xs),
             Text(
               'The QR code is located on the back or bottom of your Naadh reader.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(color: AppColors.darkTextMuted, fontSize: 12),
             ),
           ],
         ),
@@ -254,10 +280,13 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
   Widget _buildErrorBanner() {
     return Positioned(
       bottom: 40,
-      left: 20,
-      right: 20,
+      left: AppSpacing.xl,
+      right: AppSpacing.xl,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         decoration: BoxDecoration(
           color: AppColors.danger.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(AppShapes.cardRadius),
@@ -266,15 +295,15 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
           children: [
             const Icon(
               Icons.warning_amber_rounded,
-              color: Colors.white,
+              color: AppColors.onBrand,
               size: 24,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(
                 _errorMessage ?? '',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.onBrand,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -304,14 +333,14 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+              decoration: const BoxDecoration(
+                color: AppColors.darkSurfaceElevated,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.no_photography_rounded,
                 size: 56,
-                color: Colors.white70,
+                color: AppColors.darkTextMuted,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -319,7 +348,7 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.darkText,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -329,7 +358,7 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white70,
+                color: AppColors.darkTextMuted,
                 fontSize: 14,
                 height: 1.4,
               ),
@@ -341,12 +370,10 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
                 OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white38),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
+                    foregroundColor: AppColors.darkText,
+                    side: const BorderSide(color: AppColors.darkBorder),
+                    minimumSize: const Size(0, AppSpacing.buttonHeight),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
                   child: const Text('Cancel'),
                 ),
@@ -362,11 +389,9 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
                   label: const Text('Try Again'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.purple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
+                    foregroundColor: AppColors.onBrand,
+                    minimumSize: const Size(0, AppSpacing.buttonHeight),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
                 ),
               ],
@@ -376,4 +401,91 @@ class _DeviceQrScannerScreenState extends State<DeviceQrScannerScreen>
       ),
     );
   }
+}
+
+/// Paints a dimmed scrim with a rounded square cut-out and corner brackets.
+class _ViewfinderPainter extends CustomPainter {
+  const _ViewfinderPainter({
+    required this.boxSize,
+    required this.scrim,
+    required this.bracket,
+  });
+
+  static const double cornerRadius = 24;
+  static const double _bracketLength = 36;
+  static const double _bracketStroke = 5;
+
+  final double boxSize;
+  final Color scrim;
+  final Color bracket;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final hole = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: size.center(Offset.zero),
+        width: boxSize,
+        height: boxSize,
+      ),
+      const Radius.circular(cornerRadius),
+    );
+
+    final scrimPath = Path.combine(
+      PathOperation.difference,
+      Path()..addRect(Offset.zero & size),
+      Path()..addRRect(hole),
+    );
+    canvas.drawPath(scrimPath, Paint()..color = scrim);
+
+    final stroke = Paint()
+      ..color = bracket
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _bracketStroke
+      ..strokeCap = StrokeCap.round;
+
+    final r = cornerRadius;
+    final l = _bracketLength;
+    final left = hole.left;
+    final top = hole.top;
+    final right = hole.right;
+    final bottom = hole.bottom;
+
+    // Each bracket: straight run in, rounded corner, straight run out.
+    canvas.drawPath(
+      Path()
+        ..moveTo(left, top + r + l)
+        ..lineTo(left, top + r)
+        ..arcToPoint(Offset(left + r, top), radius: Radius.circular(r))
+        ..lineTo(left + r + l, top),
+      stroke,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(right - r - l, top)
+        ..lineTo(right - r, top)
+        ..arcToPoint(Offset(right, top + r), radius: Radius.circular(r))
+        ..lineTo(right, top + r + l),
+      stroke,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(right, bottom - r - l)
+        ..lineTo(right, bottom - r)
+        ..arcToPoint(Offset(right - r, bottom), radius: Radius.circular(r))
+        ..lineTo(right - r - l, bottom),
+      stroke,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(left + r + l, bottom)
+        ..lineTo(left + r, bottom)
+        ..arcToPoint(Offset(left, bottom - r), radius: Radius.circular(r))
+        ..lineTo(left, bottom - r - l),
+      stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ViewfinderPainter old) =>
+      old.boxSize != boxSize || old.scrim != scrim || old.bracket != bracket;
 }

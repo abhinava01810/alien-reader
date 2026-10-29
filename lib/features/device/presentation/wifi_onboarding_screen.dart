@@ -383,7 +383,10 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.lg,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -435,7 +438,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                 Text(
                   'The Raspberry Pi backend has live network mutations disabled (development environment). Displayed Wi-Fi networks and connection states are simulated and will not reconfigure actual physical networking.',
                   style: TextStyle(
-                    color: AppColors.charcoal.withValues(alpha: 0.85),
+                    color: context.strongText,
                     fontSize: 11.5,
                     height: 1.35,
                   ),
@@ -494,7 +497,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppColors.cloud.withValues(alpha: 0.5),
+        color: context.surfaceElevated,
         borderRadius: BorderRadius.circular(AppShapes.cardRadius),
       ),
       child: Row(
@@ -515,11 +518,13 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                         radius: 12,
                         backgroundColor: isDone
                             ? AppColors.success
-                            : (isCurrent ? AppColors.purple : AppColors.gray),
+                            : (isCurrent
+                                  ? context.accent
+                                  : context.borderColor),
                         child: Icon(
                           isDone ? Icons.check_rounded : Icons.circle_rounded,
                           size: 12,
-                          color: Colors.white,
+                          color: AppColors.onBrand,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -532,8 +537,8 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                               ? FontWeight.bold
                               : FontWeight.w500,
                           color: isCurrent
-                              ? AppColors.purple
-                              : AppColors.charcoal,
+                              ? context.accent
+                              : context.strongText,
                         ),
                       ),
                     ],
@@ -543,7 +548,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                   Container(
                     width: 12,
                     height: 2,
-                    color: isDone ? AppColors.success : AppColors.gray,
+                    color: isDone ? AppColors.success : context.borderColor,
                   ),
               ],
             ),
@@ -564,26 +569,88 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
     };
   }
 
+  /// Numbered "what to do" card shown above the form for the current step.
+  Widget _buildInstructions(List<String> steps) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: context.surfaceElevated,
+        borderRadius: BorderRadius.circular(AppShapes.cardRadius),
+        border: Border.all(color: context.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'How it works',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (var i = 0; i < steps.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 11,
+                    backgroundColor: context.accent,
+                    child: Text(
+                      '${i + 1}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onBrand,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      steps[i],
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.35,
+                        color: context.mutedText,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   // View: Enter PIN / Secret
   Widget _buildEnterSecretView() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildInstructions(const [
+          'Join the Naadh reader\'s Wi-Fi hotspot in your phone settings.',
+          'Find the setup PIN printed on the device label.',
+          'Enter the PIN below and tap Authenticate.',
+        ]),
+        const SizedBox(height: AppSpacing.lg),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.purple.withValues(alpha: 0.05),
+            color: context.accent.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(AppShapes.cardRadius),
-            border: Border.all(color: AppColors.purple.withValues(alpha: 0.2)),
+            border: Border.all(color: context.accent.withValues(alpha: 0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.fingerprint_rounded,
-                    color: AppColors.purple,
+                    color: context.accent,
                     size: 24,
                   ),
                   const SizedBox(width: 8),
@@ -591,7 +658,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                     'Device Authentication',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.purple,
+                      color: context.accent,
                     ),
                   ),
                 ],
@@ -623,7 +690,6 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           decoration: InputDecoration(
             labelText: 'Device Setup PIN or Secret',
             hintText: 'e.g. 123456 or device secret',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             prefixIcon: const Icon(Icons.lock_outline_rounded),
             suffixIcon: IconButton(
               icon: Icon(
@@ -650,15 +716,15 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                   height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: AppColors.onBrand,
                   ),
                 )
               : const Icon(Icons.login_rounded),
           label: Text(_isLoading ? 'AUTHENTICATING…' : 'AUTHENTICATE DEVICE'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.purple,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            foregroundColor: AppColors.onBrand,
+            minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
             ),
@@ -680,7 +746,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               'Available Wi-Fi Networks',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppColors.charcoal,
+                color: context.strongText,
               ),
             ),
             IconButton(
@@ -711,8 +777,8 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.cloud.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
+              color: context.surfaceElevated,
+              borderRadius: BorderRadius.circular(AppShapes.cardRadius),
             ),
             child: Column(
               children: [
@@ -746,7 +812,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               return ListTile(
                 leading: Icon(
                   net.isOpen ? Icons.wifi_rounded : Icons.wifi_lock_rounded,
-                  color: AppColors.purple,
+                  color: context.accent,
                 ),
                 title: Text(
                   net.ssid,
@@ -787,7 +853,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           icon: const Icon(Icons.add_rounded),
           label: const Text('Add Hidden / Custom Network'),
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
             ),
@@ -806,15 +872,18 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildInstructions(const [
+          'Check the network name below.',
+          'Type the Wi-Fi password.',
+          'Tap Connect and keep your phone near the reader.',
+        ]),
+        const SizedBox(height: AppSpacing.lg),
         if (_isManualSsid) ...[
           TextField(
             controller: _customSsidController,
             decoration: InputDecoration(
               labelText: 'Network Name (SSID)',
               hintText: 'Enter Wi-Fi network name',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
               prefixIcon: const Icon(Icons.wifi_rounded),
             ),
           ),
@@ -823,12 +892,12 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.cloud.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(10),
+              color: context.surfaceElevated,
+              borderRadius: BorderRadius.circular(AppShapes.cardRadius),
             ),
             child: Row(
               children: [
-                const Icon(Icons.wifi_rounded, color: AppColors.purple),
+                Icon(Icons.wifi_rounded, color: context.accent),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -856,7 +925,6 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           decoration: InputDecoration(
             labelText: 'Wi-Fi Password',
             hintText: 'Enter network passphrase',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             prefixIcon: const Icon(Icons.lock_outline_rounded),
             suffixIcon: IconButton(
               icon: Icon(
@@ -884,15 +952,15 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
                   height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: AppColors.onBrand,
                   ),
                 )
               : const Icon(Icons.wifi_rounded),
-          label: const Text('CONNECT DEVICE TO WI-FI'),
+          label: const Text('CONNECT'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.purple,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            foregroundColor: AppColors.onBrand,
+            minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
             ),
@@ -903,7 +971,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           onPressed: () =>
               setState(() => _currentStep = WifiOnboardingStep.selectNetwork),
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
             ),
@@ -925,12 +993,12 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
         child: Column(
           children: [
-            const SizedBox(
+            SizedBox(
               width: 56,
-              height: AppSpacing.buttonHeight,
+              height: 56,
               child: CircularProgressIndicator(
                 strokeWidth: 3.5,
-                color: AppColors.purple,
+                color: context.accent,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -959,10 +1027,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.danger,
                 side: const BorderSide(color: AppColors.danger),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
+                minimumSize: const Size(0, AppSpacing.buttonHeight),
               ),
             ),
           ],
@@ -1017,17 +1082,13 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.cloud,
-              borderRadius: BorderRadius.circular(8),
+              color: context.surfaceElevated,
+              borderRadius: BorderRadius.circular(AppShapes.cardRadius),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.lan_rounded,
-                  size: 18,
-                  color: AppColors.purple,
-                ),
+                Icon(Icons.lan_rounded, size: 18, color: context.accent),
                 const SizedBox(width: 8),
                 Text(
                   'Assigned IP: $assignedIp',
@@ -1044,9 +1105,9 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.cloud.withValues(alpha: 0.5),
+            color: context.surfaceElevated,
             borderRadius: BorderRadius.circular(AppShapes.cardRadius),
-            border: Border.all(color: AppColors.gray),
+            border: Border.all(color: context.borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1078,8 +1139,8 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           label: const Text('RETURN TO APPLICATION'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.purple,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            foregroundColor: AppColors.onBrand,
+            minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
             ),
@@ -1133,8 +1194,8 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
           label: const Text('TRY AGAIN'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.purple,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            foregroundColor: AppColors.onBrand,
+            minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
             ),
@@ -1144,7 +1205,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
         OutlinedButton(
           onPressed: _cancelSetup,
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
             ),

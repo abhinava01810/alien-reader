@@ -32,7 +32,10 @@ class DeviceIdentifiedScreen extends StatelessWidget {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -57,7 +60,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                   label: const Text('CONFIGURE WI-FI'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.purple,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.onBrand,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(
                         AppShapes.buttonRadius,
@@ -68,16 +71,12 @@ class DeviceIdentifiedScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               SizedBox(
-                height: 48,
+                height: AppSpacing.buttonHeight,
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark
-                        ? AppColors.darkText
-                        : AppColors.charcoal,
-                    side: BorderSide(
-                      color: isDark ? AppColors.darkBorder : AppColors.gray,
-                    ),
+                    foregroundColor: context.strongText,
+                    side: BorderSide(color: context.borderColor),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(
                         AppShapes.buttonRadius,
@@ -112,13 +111,9 @@ class DeviceIdentifiedScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: isDark
-              ? AppColors.darkSurfaceElevated
-              : AppColors.cloud.withValues(alpha: 0.5),
+          color: context.surfaceElevated,
           borderRadius: BorderRadius.circular(AppShapes.cardRadius),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-          ),
+          border: Border.all(color: context.borderColor),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -139,9 +134,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                               ? AppColors.success
                               : (step.isActive
                                     ? AppColors.purple
-                                    : (isDark
-                                          ? AppColors.darkBorder
-                                          : AppColors.gray)),
+                                    : (context.borderColor)),
                           child: Icon(
                             step.isComplete
                                 ? Icons.check_rounded
@@ -149,7 +142,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                                       ? Icons.fingerprint_rounded
                                       : Icons.wifi_rounded),
                             size: 16,
-                            color: Colors.white,
+                            color: AppColors.onBrand,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -162,12 +155,8 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                                 ? FontWeight.bold
                                 : FontWeight.w500,
                             color: step.isActive
-                                ? (isDark
-                                      ? AppColors.purpleMid
-                                      : AppColors.purple)
-                                : (isDark
-                                      ? AppColors.darkTextMuted
-                                      : AppColors.charcoal),
+                                ? (context.accent)
+                                : (context.mutedText),
                           ),
                         ),
                       ],
@@ -179,7 +168,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                       height: 2,
                       color: steps[idx].isComplete
                           ? AppColors.success
-                          : (isDark ? AppColors.darkBorder : AppColors.gray),
+                          : (context.borderColor),
                     ),
                 ],
               ),
@@ -192,38 +181,24 @@ class DeviceIdentifiedScreen extends StatelessWidget {
 
   Widget _buildDeviceIdentificationCard(BuildContext context, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: context.surface,
         borderRadius: BorderRadius.circular(AppShapes.cardRadius),
-        border: Border.all(
-          color: isDark
-              ? AppColors.purpleMid.withValues(alpha: 0.4)
-              : AppColors.purple.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.purple.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.purpleDarkTint
-                  : AppColors.purple.withValues(alpha: 0.1),
+              color: AppColors.success.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.qr_code_2_rounded,
+            child: const Icon(
+              Icons.check_circle_rounded,
               size: 48,
-              color: isDark ? AppColors.purpleMid : AppColors.purple,
+              color: AppColors.success,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -231,54 +206,67 @@ class DeviceIdentifiedScreen extends StatelessWidget {
             'Device Detected',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: isDark ? AppColors.darkText : AppColors.charcoal,
+              color: context.strongText,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.lg),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.gray,
-              ),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
             ),
-            child: SelectableText(
-              payload.deviceId,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-                color: isDark ? AppColors.purpleMid : AppColors.purple,
-              ),
+            decoration: BoxDecoration(
+              color: context.surfaceElevated,
+              borderRadius: BorderRadius.circular(AppShapes.cardRadius),
+              border: Border.all(color: context.borderColor),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'SERIAL NUMBER',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: context.mutedText,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                SelectableText(
+                  payload.deviceId,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: context.accent,
+                  ),
+                ),
+              ],
             ),
           ),
           if (payload.model != null || payload.version != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Wrap(
-              spacing: 8,
+              spacing: AppSpacing.sm,
               children: [
                 if (payload.model != null)
                   Chip(
                     label: Text('Model: ${payload.model}'),
-                    backgroundColor: isDark
-                        ? AppColors.darkSurfaceElevated
-                        : AppColors.cloud,
+                    backgroundColor: context.surfaceElevated,
                     labelStyle: TextStyle(
                       fontSize: 11,
-                      color: isDark ? AppColors.darkText : AppColors.charcoal,
+                      color: context.strongText,
                     ),
                   ),
                 if (payload.version != null)
                   Chip(
                     label: Text('v${payload.version}'),
-                    backgroundColor: isDark
-                        ? AppColors.darkSurfaceElevated
-                        : AppColors.cloud,
+                    backgroundColor: context.surfaceElevated,
                     labelStyle: TextStyle(
                       fontSize: 11,
-                      color: isDark ? AppColors.darkText : AppColors.charcoal,
+                      color: context.strongText,
                     ),
                   ),
               ],
@@ -313,7 +301,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                 Text(
                   'Device identified — setup not completed',
                   style: TextStyle(
-                    color: isDark ? AppColors.darkText : AppColors.charcoal,
+                    color: context.strongText,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -322,9 +310,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                 Text(
                   'The device identifier has been verified from the QR code. Tap "Configure Wi-Fi" to connect your Naadh reader to your local wireless network.',
                   style: TextStyle(
-                    color: isDark
-                        ? AppColors.darkTextMuted
-                        : AppColors.charcoal.withValues(alpha: 0.8),
+                    color: context.mutedText,
                     fontSize: 12.5,
                     height: 1.35,
                   ),
@@ -341,30 +327,22 @@ class DeviceIdentifiedScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.darkSurfaceElevated
-            : AppColors.cloud.withValues(alpha: 0.5),
+        color: context.surfaceElevated,
         borderRadius: BorderRadius.circular(AppShapes.cardRadius),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.gray,
-        ),
+        border: Border.all(color: context.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.network_wifi_rounded,
-                size: 20,
-                color: isDark ? AppColors.purpleMid : AppColors.purpleMid,
-              ),
+              Icon(Icons.network_wifi_rounded, size: 20, color: context.accent),
               const SizedBox(width: 8),
               Text(
                 'Next Step: Wi-Fi Provisioning',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkText : AppColors.charcoal,
+                  color: context.strongText,
                 ),
               ),
             ],

@@ -12,6 +12,9 @@ abstract final class AppColors {
   static const Color success = Color(0xFF22C55E);
   static const Color danger = Color(0xFFEF4444);
 
+  /// Foreground on brand-colored fills (filled buttons, badges).
+  static const Color onBrand = Colors.white;
+
   // Modern surface & neutral tokens
   static const Color darkBackground = Color(0xFF121316);
   static const Color darkSurface = Color(0xFF1B1D22);
@@ -40,4 +43,15 @@ extension AppColorContext on BuildContext {
       _isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
 
   Color get strongText => _isDark ? AppColors.darkText : AppColors.lightText;
+
+  Color get surface => _isDark ? AppColors.darkSurface : AppColors.lightSurface;
+
+  Color get surfaceElevated =>
+      _isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceElevated;
+
+  Color get borderColor =>
+      _isDark ? AppColors.darkBorder : AppColors.lightBorder;
+
+  /// Brand accent for text and icons on the page background.
+  Color get accent => _isDark ? AppColors.purpleMid : AppColors.purple;
 }

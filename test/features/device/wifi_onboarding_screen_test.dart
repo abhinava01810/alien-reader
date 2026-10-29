@@ -64,6 +64,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('AUTHENTICATE DEVICE'));
     await tester.tap(find.text('AUTHENTICATE DEVICE'));
     await tester.pumpAndSettle();
 
@@ -126,6 +127,7 @@ void main() {
 
       // Enter PIN
       await tester.enterText(find.byType(TextField), 'valid-secret');
+      await tester.ensureVisible(find.text('AUTHENTICATE DEVICE'));
       await tester.tap(find.text('AUTHENTICATE DEVICE'));
       await tester.pumpAndSettle();
 
@@ -160,6 +162,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'wrong-secret');
+    await tester.ensureVisible(find.text('AUTHENTICATE DEVICE'));
     await tester.tap(find.text('AUTHENTICATE DEVICE'));
     await tester.pumpAndSettle();
 
@@ -188,6 +191,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'any-secret');
+    await tester.ensureVisible(find.text('AUTHENTICATE DEVICE'));
     await tester.tap(find.text('AUTHENTICATE DEVICE'));
     await tester.pumpAndSettle();
 

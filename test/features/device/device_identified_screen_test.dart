@@ -22,6 +22,7 @@ void main() {
       expect(find.text('Device Setup'), findsOneWidget);
       expect(find.text('Device Detected'), findsOneWidget);
       expect(find.text('NAADH-TEST-001'), findsOneWidget);
+      expect(find.text('SERIAL NUMBER'), findsOneWidget);
       expect(find.text('v1.0'), findsOneWidget);
 
       // Verify explicit honest status label
