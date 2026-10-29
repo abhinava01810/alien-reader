@@ -10,6 +10,7 @@ import '../../../features/device/data/raspberry_pi_device.dart';
 import '../../../features/document/data/models/saved_document.dart';
 import '../../../features/document/data/services/document_storage_service.dart';
 import '../../../shared/models/document_output.dart';
+import '../../../shared/widgets/app_dialogs.dart';
 import '../../../shared/widgets/empty_state.dart';
 
 /// Files tab — two sub-tabs:
@@ -28,6 +29,7 @@ class FilesScreen extends StatefulWidget {
 
 class _FilesScreenState extends State<FilesScreen> {
   _Tab _tab = _Tab.saved;
+  String _query = '';
 
   // ── Saved docs ────────────────────────────────────────────────────
   final _storageService = DocumentStorageService();
@@ -111,6 +113,33 @@ class _FilesScreenState extends State<FilesScreen> {
     if (deleted == true) {
       await _loadSavedDocs();
     }
+  }
+
+  Future<bool> _confirmAndDelete(SavedDocument doc) async {
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: 'Delete document?',
+      message:
+          '"${doc.displayTitle}" will be removed from this phone. '
+          'This cannot be undone.',
+    );
+    if (confirmed != true) return false;
+    try {
+      await _storageService.deleteDocument(doc.documentId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+      }
+      return false;
+    }
+    if (mounted) {
+      setState(
+        () => _savedDocs.removeWhere((d) => d.documentId == doc.documentId),
+      );
+    }
+    return true;
   }
 
   Future<void> _openSessionCapture(int pageNumber) async {
@@ -216,10 +245,9 @@ class _FilesScreenState extends State<FilesScreen> {
             children: [
               Expanded(
                 child: SearchBar(
-                  hintText: _tab == _Tab.saved
-                      ? 'Search saved documents'
-                      : 'Search session captures',
-                  leading: const Icon(Icons.search),
+                  hintText: 'Search saved documents',
+                  leading: const Icon(Icons.search_rounded),
+                  onChanged: (value) => setState(() => _query = value),
                 ),
               ),
               const SizedBox(width: 8),
@@ -227,7 +255,7 @@ class _FilesScreenState extends State<FilesScreen> {
                 onPressed: _tab == _Tab.saved
                     ? _loadSavedDocs
                     : _loadSessionCaptures,
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh_rounded),
                 tooltip: 'Refresh',
               ),
             ],
@@ -278,21 +306,55 @@ class _FilesScreenState extends State<FilesScreen> {
     }
     if (_savedDocs.isEmpty) {
       return const EmptyState(
-        title: 'No saved documents',
-        subtitle:
-            'After viewing scan results, tap "Save Complete Document" '
-            'to save it permanently here.',
+        title: 'No saved files',
+        subtitle: 'Documents you read are saved on this phone and appear here.',
+        icon: Icons.folder_rounded,
+      );
+    }
+    final q = _query.trim().toLowerCase();
+    final docs = q.isEmpty
+        ? _savedDocs
+        : _savedDocs
+              .where(
+                (d) =>
+                    d.displayTitle.toLowerCase().contains(q) ||
+                    d.originalText.toLowerCase().contains(q),
+              )
+              .toList();
+    if (docs.isEmpty) {
+      return const EmptyState(
+        title: 'No matches',
+        subtitle: 'Try a different search.',
+        icon: Icons.search_rounded,
       );
     }
     return RefreshIndicator(
       onRefresh: _loadSavedDocs,
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: _savedDocs.length,
+        itemCount: docs.length,
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
-          final doc = _savedDocs[index];
-          return _SavedDocCard(document: doc, onTap: () => _openSavedDoc(doc));
+          final doc = docs[index];
+          return Dismissible(
+            key: ValueKey(doc.documentId),
+            direction: DismissDirection.endToStart,
+            confirmDismiss: (_) => _confirmAndDelete(doc),
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: AppColors.danger,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.delete_rounded, color: Colors.white),
+            ),
+            child: _SavedDocCard(
+              document: doc,
+              onTap: () => _openSavedDoc(doc),
+              onDelete: () => _confirmAndDelete(doc),
+            ),
+          );
         },
       ),
     );
@@ -346,7 +408,9 @@ class _FilesScreenState extends State<FilesScreen> {
           Text(
             msg,
             style: TextStyle(
-              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+              color: isDark
+                  ? AppColors.darkTextMuted
+                  : AppColors.lightTextMuted,
             ),
           ),
         ],
@@ -363,7 +427,7 @@ class _FilesScreenState extends State<FilesScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.cloud_off_outlined,
+              Icons.cloud_off_rounded,
               size: 40,
               color: isDark ? AppColors.darkTextMuted : Colors.black38,
             ),
@@ -372,13 +436,15 @@ class _FilesScreenState extends State<FilesScreen> {
               error,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                color: isDark
+                    ? AppColors.darkTextMuted
+                    : AppColors.lightTextMuted,
               ),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: retry,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh_rounded),
               label: const Text('Retry'),
             ),
           ],
@@ -399,10 +465,15 @@ enum _Tab { saved, session }
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SavedDocCard extends StatelessWidget {
-  const _SavedDocCard({required this.document, required this.onTap});
+  const _SavedDocCard({
+    required this.document,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   final SavedDocument document;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   static const _months = [
     'Jan',
@@ -453,7 +524,7 @@ class _SavedDocCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      document.documentTitle,
+                      document.displayTitle,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -465,25 +536,33 @@ class _SavedDocCard extends StatelessWidget {
                       dateStr,
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        color: isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.lightTextMuted,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      document.textPreview,
+                      '${document.wordCount} ${document.wordCount == 1 ? 'word' : 'words'}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        color: isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.lightTextMuted,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right,
-                color: isDark ? AppColors.darkTextMuted : Colors.black38,
+              IconButton(
+                onPressed: onDelete,
+                tooltip: 'Delete',
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: isDark
+                      ? AppColors.darkTextMuted
+                      : AppColors.lightTextMuted,
+                ),
               ),
             ],
           ),
@@ -504,7 +583,7 @@ class _SavedDocCard extends StatelessWidget {
       color: isDark ? AppColors.purpleDarkTint : AppColors.purpleLightTint,
       child: const Center(
         child: Icon(
-          Icons.description_outlined,
+          Icons.description_rounded,
           color: AppColors.purple,
           size: 26,
         ),
@@ -574,14 +653,16 @@ class _SessionCaptureCard extends StatelessWidget {
                     Text(
                       'Tap to view OCR text and AI summary',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        color: isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.lightTextMuted,
                       ),
                     ),
                   ],
                 ),
               ),
               Icon(
-                Icons.chevron_right,
+                Icons.chevron_right_rounded,
                 color: isDark ? AppColors.darkTextMuted : Colors.black38,
               ),
             ],
@@ -597,7 +678,7 @@ class _SessionCaptureCard extends StatelessWidget {
       color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
       child: Center(
         child: Icon(
-          Icons.image_outlined,
+          Icons.image_rounded,
           color: isDark ? AppColors.darkTextMuted : Colors.black38,
           size: 24,
         ),

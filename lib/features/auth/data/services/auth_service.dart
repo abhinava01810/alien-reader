@@ -210,9 +210,7 @@ class AuthService {
       throw const AuthException('Please enter your registered email or phone.');
     }
     if (newPassword.length < 6) {
-      throw const AuthException(
-        'New password must be at least 6 characters.',
-      );
+      throw const AuthException('New password must be at least 6 characters.');
     }
 
     final user = await findUser(trimmedUser);
@@ -220,12 +218,14 @@ class AuthService {
       throw const AuthException('Account not found.');
     }
 
-    final emailMatches = user.email != null &&
+    final emailMatches =
+        user.email != null &&
         user.email!.trim().toLowerCase() == trimmedContact.toLowerCase();
 
     final userPhoneClean = user.phone?.replaceAll(RegExp(r'\D'), '');
     final inputPhoneClean = trimmedContact.replaceAll(RegExp(r'\D'), '');
-    final phoneMatches = userPhoneClean != null &&
+    final phoneMatches =
+        userPhoneClean != null &&
         userPhoneClean.isNotEmpty &&
         inputPhoneClean.isNotEmpty &&
         userPhoneClean == inputPhoneClean;
@@ -239,18 +239,72 @@ class AuthService {
     final newSalt = generateSalt();
     final newHash = hashPassword(newPassword, newSalt);
 
-    final updatedUser = user.copyWith(
-      passwordHash: newHash,
-      salt: newSalt,
-    );
+    final updatedUser = user.copyWith(passwordHash: newHash, salt: newSalt);
 
     final users = await getAllUsers();
-    final index = users.indexWhere((u) =>
-        u.username.toLowerCase() == user.username.toLowerCase());
+    final index = users.indexWhere(
+      (u) => u.username.toLowerCase() == user.username.toLowerCase(),
+    );
     if (index >= 0) {
       users[index] = updatedUser;
     }
 
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _usersPrefsKey,
+      jsonEncode(users.map((u) => u.toJson()).toList()),
+    );
+  }
+
+  /// Changes the password of the signed-in account after checking the
+  /// current one.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = await _verifiedCurrentUser(currentPassword);
+    if (newPassword.length < 6) {
+      throw const AuthException('New password must be at least 6 characters.');
+    }
+    final newSalt = generateSalt();
+    final updated = user.copyWith(
+      passwordHash: hashPassword(newPassword, newSalt),
+      salt: newSalt,
+    );
+    final users = await getAllUsers();
+    final index = users.indexWhere(
+      (u) => u.username.toLowerCase() == user.username.toLowerCase(),
+    );
+    if (index >= 0) users[index] = updated;
+    await _saveUsers(users);
+    await _setActiveUser(updated);
+  }
+
+  /// Removes the signed-in account from this phone after checking the
+  /// password, then signs out. Saved documents are not touched.
+  Future<void> deleteAccount({required String password}) async {
+    final user = await _verifiedCurrentUser(password);
+    final users = await getAllUsers();
+    users.removeWhere(
+      (u) => u.username.toLowerCase() == user.username.toLowerCase(),
+    );
+    await _saveUsers(users);
+    await logout();
+  }
+
+  Future<UserAccount> _verifiedCurrentUser(String password) async {
+    final current = await getCurrentUser();
+    if (current == null) {
+      throw const AuthException('You are not signed in.');
+    }
+    final user = await findUser(current.username) ?? current;
+    if (hashPassword(password, user.salt) != user.passwordHash) {
+      throw const AuthException('Current password is incorrect.');
+    }
+    return user;
+  }
+
+  Future<void> _saveUsers(List<UserAccount> users) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _usersPrefsKey,
@@ -270,4 +324,3 @@ class AuthService {
     await prefs.setString(_sessionUserNameKey, user.username);
   }
 }
-

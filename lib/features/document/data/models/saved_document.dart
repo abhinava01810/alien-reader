@@ -116,6 +116,22 @@ class SavedDocument {
 
   // ─── Helpers ──────────────────────────────────────────────────────
 
+  /// Title for lists: the stored title, or the first line of text if blank.
+  String get displayTitle {
+    final title = documentTitle.trim();
+    if (title.isNotEmpty) return title;
+    for (final line in originalText.split('\n')) {
+      if (line.trim().isNotEmpty) return line.trim();
+    }
+    return 'Untitled document';
+  }
+
+  /// Number of whitespace-separated words in the original text.
+  int get wordCount {
+    final trimmed = originalText.trim();
+    return trimmed.isEmpty ? 0 : trimmed.split(RegExp(r'\s+')).length;
+  }
+
   /// Short excerpt of the original text for list previews.
   String get textPreview {
     final trimmed = originalText.trim();
