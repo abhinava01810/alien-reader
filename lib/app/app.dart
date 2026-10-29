@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_strings.dart';
 import '../core/theme/app_colors.dart';
+import '../core/theme/app_shapes.dart';
+import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_controller.dart';
 import '../features/device/data/raspberry_pi_device.dart';
@@ -19,6 +21,7 @@ import '../features/session/presentation/session_start_screen.dart';
 import '../shared/models/document_output.dart';
 import '../shared/widgets/alien_header.dart';
 import '../shared/widgets/app_bottom_nav.dart';
+import '../shared/widgets/section_header.dart';
 import '../shared/widgets/splash_screen.dart';
 import 'router.dart';
 
@@ -506,8 +509,6 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _showConnectionDialog() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -515,77 +516,71 @@ class _AppShellState extends State<AppShell> {
         final isConnected =
             _status == ReaderConnectionStatus.connected ||
             _status == ReaderConnectionStatus.busy;
+        final statusColor = isConnected ? AppColors.success : AppColors.danger;
 
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              0,
+              AppSpacing.xl,
+              AppSpacing.xl,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  Icons.memory_rounded,
-                  size: 44,
-                  color: isDark ? AppColors.purpleMid : AppColors.purple,
+                const SectionHeader(
+                  title: 'Raspberry Pi Connection',
+                  icon: Icons.memory_rounded,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Raspberry Pi Connection',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: isConnected
-                        ? AppColors.success.withValues(alpha: 0.12)
-                        : AppColors.danger.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
+                    color: context.surface,
+                    borderRadius: BorderRadius.circular(AppShapes.cardRadius),
+                    border: Border.all(color: context.borderColor),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         isConnected
                             ? Icons.check_circle_rounded
                             : Icons.cloud_off_rounded,
-                        color: isConnected
-                            ? AppColors.success
-                            : AppColors.danger,
-                        size: 16,
+                        color: statusColor,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isConnected ? 'Hardware Connected' : 'Disconnected',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: isConnected
-                              ? AppColors.success
-                              : AppColors.danger,
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isConnected
+                                  ? 'Hardware Connected'
+                                  : 'Disconnected',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: statusColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Active User: ${_userName ?? 'Unknown'}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: context.mutedText,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Active User: ${_userName ?? 'Unknown'}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark
-                        ? AppColors.darkTextMuted
-                        : AppColors.lightTextMuted,
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
                 SizedBox(
-                  width: double.infinity,
-                  height: 48,
+                  height: AppSpacing.buttonHeight,
                   child: FilledButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
@@ -597,15 +592,14 @@ class _AppShellState extends State<AppShell> {
                     label: const Text('SCAN WI-FI / SET UP DEVICE'),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.purple,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.onBrand,
                     ),
                   ),
                 ),
                 if (isConnected) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpacing.sm),
                   SizedBox(
-                    width: double.infinity,
-                    height: 48,
+                    height: AppSpacing.buttonHeight,
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         Navigator.pop(context);
@@ -620,7 +614,7 @@ class _AppShellState extends State<AppShell> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 TextButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
@@ -628,6 +622,7 @@ class _AppShellState extends State<AppShell> {
                   },
                   icon: const Icon(Icons.settings_rounded),
                   label: const Text('All Settings & Preferences'),
+                  style: TextButton.styleFrom(foregroundColor: context.accent),
                 ),
               ],
             ),

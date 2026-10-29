@@ -265,26 +265,40 @@ class _FilesScreenState extends State<FilesScreen> {
         // ── Tab chips ─────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              ChoiceChip(
-                label: const Text('Saved'),
-                selected: _tab == _Tab.saved,
-                onSelected: (_) {
-                  setState(() => _tab = _Tab.saved);
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<_Tab>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: _Tab.saved,
+                  icon: Icon(Icons.folder_rounded),
+                  label: Text('Saved', softWrap: false),
+                ),
+                ButtonSegment(
+                  value: _Tab.session,
+                  icon: Icon(Icons.photo_library_rounded),
+                  label: Text('Session', softWrap: false),
+                ),
+              ],
+              selected: {_tab},
+              onSelectionChanged: (selection) {
+                final tab = selection.first;
+                setState(() => _tab = tab);
+                if (tab == _Tab.saved) {
                   _loadSavedDocs();
-                },
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Session'),
-                selected: _tab == _Tab.session,
-                onSelected: (_) {
-                  setState(() => _tab = _Tab.session);
+                } else {
                   _loadSessionCaptures();
-                },
+                }
+              },
+              style: SegmentedButton.styleFrom(
+                minimumSize: const Size(0, AppSpacing.buttonHeight),
+                selectedBackgroundColor: context.accent.withValues(alpha: 0.14),
+                selectedForegroundColor: context.accent,
+                foregroundColor: context.mutedText,
+                side: BorderSide(color: context.borderColor),
               ),
-            ],
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.sm),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -44,6 +45,18 @@ void main() {
     await _pump(tester, []);
 
     expect(find.text('No saved files'), findsOneWidget);
+  });
+
+  testWidgets('Saved and Session tabs show their full labels', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await _pump(tester, []);
+
+    for (final label in ['Saved', 'Session']) {
+      final text = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(text.didExceedMaxLines, isFalse, reason: label);
+    }
   });
 
   testWidgets('delete asks for confirmation and removes the file', (

@@ -32,7 +32,10 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.brightness_auto_rounded),
+                  leading: Icon(
+                    Icons.brightness_auto_rounded,
+                    color: context.accent,
+                  ),
                   title: const Text('System Default'),
                   subtitle: const Text('Adapts to phone system theme'),
                   trailing: current == ThemeMode.system
@@ -46,7 +49,10 @@ class SettingsScreen extends StatelessWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.light_mode_rounded),
+                  leading: Icon(
+                    Icons.light_mode_rounded,
+                    color: context.accent,
+                  ),
                   title: const Text('Light Theme'),
                   subtitle: const Text(
                     'Clean white background with purple accents',
@@ -62,7 +68,7 @@ class SettingsScreen extends StatelessWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.dark_mode_rounded),
+                  leading: Icon(Icons.dark_mode_rounded, color: context.accent),
                   title: const Text('Dark Theme'),
                   subtitle: const Text(
                     'Rich charcoal background with purple accents',
@@ -182,35 +188,20 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionHeader(title: 'Device'),
+                SectionHeader(title: 'Device', icon: Icons.memory_rounded),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: isDark
-                        ? AppColors.purpleDarkTint
-                        : AppColors.purpleLightTint,
-                    child: Icon(
-                      Icons.qr_code_scanner_rounded,
-                      size: 20,
-                      color: context.accent,
-                    ),
+                  leading: Icon(
+                    Icons.qr_code_scanner_rounded,
+                    size: 22,
+                    color: context.accent,
                   ),
-                  title: Text(
-                    'Add Device (QR Setup)',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: context.accent,
-                    ),
-                  ),
-                  subtitle: const Text(
-                    'Scan QR code on your Naadh reader',
-                    style: TextStyle(fontSize: 12),
-                  ),
+                  title: const Text('Add Device (QR Setup)'),
+                  subtitle: const Text('Scan QR code on your Naadh reader'),
                   trailing: Icon(
                     Icons.chevron_right_rounded,
-                    color: context.accent,
+                    color: context.mutedText,
                   ),
                   onTap: () {
                     Navigator.of(context).pushNamed(AppRoutes.deviceQrScanner);
@@ -219,17 +210,31 @@ class SettingsScreen extends StatelessWidget {
                 const Divider(height: 16),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.info_outline_rounded, size: 22),
+                  leading: Icon(
+                    Icons.info_outline_rounded,
+                    size: 22,
+                    color: context.accent,
+                  ),
                   title: const Text('Device Information'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                   onTap: () => _showDeviceInfoDialog(context),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.wifi_rounded, size: 22),
+                  leading: Icon(
+                    Icons.wifi_rounded,
+                    size: 22,
+                    color: context.accent,
+                  ),
                   title: const Text('Wi-Fi Configuration'),
                   subtitle: const Text('Configure reader wireless network'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                   onTap: () {
                     Navigator.of(context).pushNamed(AppRoutes.deviceQrScanner);
                   },
@@ -244,7 +249,10 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionHeader(title: 'Appearance & Theme'),
+                SectionHeader(
+                  title: 'Appearance & Theme',
+                  icon: Icons.palette_rounded,
+                ),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -259,7 +267,10 @@ class SettingsScreen extends StatelessWidget {
                     ThemeMode.light => 'Light Theme',
                     ThemeMode.dark => 'Dark Theme',
                   }),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                   onTap: () => _showThemeDialog(context),
                 ),
               ],
@@ -272,21 +283,38 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionHeader(title: 'Scanning & Processing'),
+                SectionHeader(
+                  title: 'Scanning & Processing',
+                  icon: Icons.document_scanner_rounded,
+                ),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.camera_alt_rounded, size: 22),
+                  leading: Icon(
+                    Icons.camera_alt_rounded,
+                    size: 22,
+                    color: context.accent,
+                  ),
                   title: const Text('Capture Preferences'),
                   subtitle: const Text('Multi-page delay and framing guides'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.text_snippet_rounded, size: 22),
+                  leading: Icon(
+                    Icons.text_snippet_rounded,
+                    size: 22,
+                    color: context.accent,
+                  ),
                   title: const Text('OCR Recognition'),
                   subtitle: const Text('Language: English (US)'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                 ),
               ],
             ),
@@ -298,21 +326,38 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionHeader(title: 'Audio & Synthesis'),
+                SectionHeader(
+                  title: 'Audio & Synthesis',
+                  icon: Icons.graphic_eq_rounded,
+                ),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.volume_up_rounded, size: 22),
+                  leading: Icon(
+                    Icons.volume_up_rounded,
+                    size: 22,
+                    color: context.accent,
+                  ),
                   title: const Text('Text-to-Speech Output'),
                   subtitle: const Text('Phone Speaker / Headphones'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.speed_rounded, size: 22),
+                  leading: Icon(
+                    Icons.speed_rounded,
+                    size: 22,
+                    color: context.accent,
+                  ),
                   title: const Text('Speech Rate'),
                   subtitle: const Text('1.0x (Normal)'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                 ),
               ],
             ),
@@ -324,21 +369,35 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionHeader(title: 'About'),
+                SectionHeader(title: 'About', icon: Icons.info_rounded),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.business_rounded, size: 22),
+                  leading: Icon(
+                    Icons.business_rounded,
+                    size: 22,
+                    color: context.accent,
+                  ),
                   title: const Text('About Alien Innovations'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                   onTap: () => _showAboutDialog(context),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.shield_rounded, size: 22),
+                  leading: Icon(
+                    Icons.shield_rounded,
+                    size: 22,
+                    color: context.accent,
+                  ),
                   title: const Text('Privacy & Security'),
                   subtitle: const Text('Credentials stored encrypted locally'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.mutedText,
+                  ),
                 ),
               ],
             ),

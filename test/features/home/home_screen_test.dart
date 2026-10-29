@@ -41,6 +41,8 @@ void main() {
       expect(find.text('Scan QR code'), findsOneWidget);
       expect(find.text('Reconnect'), findsNothing);
       expect(find.text('Capture page'), findsNothing);
+      expect(find.text('Captured Pages'), findsNothing);
+      expect(find.text('No pages captured yet'), findsNothing);
     });
 
     testWidgets(

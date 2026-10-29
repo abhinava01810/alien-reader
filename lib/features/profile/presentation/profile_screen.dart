@@ -668,7 +668,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: AppSpacing.lg),
           Center(
             child: Text(
-              'Naadh version ${AppStrings.appVersion}',
+              'Naadh v${AppStrings.appVersion}',
               style: TextStyle(
                 fontSize: 12,
                 color: onSurface.withValues(alpha: 0.5),

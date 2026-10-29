@@ -240,13 +240,13 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildCameraCard(cameraHeight),
           const SizedBox(height: AppSpacing.md),
           _buildCaptureAndReadControls(isDark, isDeviceReady),
-        ],
-        if (widget.ocrFailureMessage != null) ...[
+          if (widget.ocrFailureMessage != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            _buildOcrFailureBanner(),
+          ],
           const SizedBox(height: AppSpacing.md),
-          _buildOcrFailureBanner(),
+          _buildCapturedPagesSection(context, isDark),
         ],
-        const SizedBox(height: AppSpacing.md),
-        _buildCapturedPagesSection(context, isDark),
         const SizedBox(height: AppSpacing.xl),
       ],
     );

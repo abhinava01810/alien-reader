@@ -60,7 +60,7 @@ void main() {
     expect(find.text('Change password'), findsOneWidget);
     expect(find.text('Delete account'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Naadh version ${AppStrings.appVersion}'),
+      find.text('Naadh v${AppStrings.appVersion}'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
@@ -89,5 +89,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(signedOut, isTrue);
     expect(await AuthService().findUser('alice'), isNull);
+  });
+
+  testWidgets(
+    'sections appear in order: Devices, Appearance, Usage, Account, version',
+    (tester) async {
+      await pump(tester);
+
+      final titles = [
+        'My Devices',
+        'Appearance',
+        'Usage & Storage',
+        'Account',
+        'Naadh v${AppStrings.appVersion}',
+      ];
+      final ys = [for (final t in titles) tester.getTopLeft(find.text(t)).dy];
+      for (var i = 1; i < ys.length; i++) {
+        expect(ys[i], greaterThan(ys[i - 1]), reason: titles[i]);
+      }
+      expect(find.text('Log out'), findsOneWidget);
+    },
+  );
+
+  testWidgets('change password dialog has three fields', (tester) async {
+    await pump(tester);
+
+    await tester.tap(find.text('Change password'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Current password'), findsOneWidget);
+    expect(find.text('New password'), findsOneWidget);
+    expect(find.text('Confirm new password'), findsOneWidget);
   });
 }
