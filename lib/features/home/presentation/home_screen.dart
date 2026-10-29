@@ -28,6 +28,7 @@ class HomeScreen extends StatefulWidget {
     this.onOpenFiles,
     this.onOpenSettings,
     this.onOpenProfile,
+    this.onOpenConnection,
     this.deviceStorage,
   });
 
@@ -43,6 +44,9 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback? onOpenFiles;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenProfile;
+
+  /// Opens the Raspberry Pi connection sheet (status bar tap).
+  final VoidCallback? onOpenConnection;
   final DeviceStorageService? deviceStorage;
 
   @override
@@ -380,30 +384,36 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+    return Material(
+      color: context.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        side: BorderSide(color: color.withValues(alpha: 0.35)),
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                color: color,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: widget.onOpenConnection,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: color,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
+              ?action,
+            ],
           ),
-          ?action,
-        ],
+        ),
       ),
     );
   }

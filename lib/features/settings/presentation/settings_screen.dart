@@ -10,7 +10,10 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/section_header.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.onOpenConnection});
+
+  /// Opens the Raspberry Pi connection sheet; the tile is hidden when null.
+  final VoidCallback? onOpenConnection;
 
   void _showThemeDialog(BuildContext context) {
     final current = ThemeController.instance.themeMode;
@@ -194,6 +197,24 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 SectionHeader(title: 'Device', icon: Icons.memory_rounded),
                 const Divider(height: 20),
+                if (onOpenConnection != null)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.settings_input_antenna_rounded,
+                      size: 22,
+                      color: context.accent,
+                    ),
+                    title: const Text('Connection Status'),
+                    subtitle: const Text(
+                      'Raspberry Pi connection and controls',
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right_rounded,
+                      color: context.mutedText,
+                    ),
+                    onTap: onOpenConnection,
+                  ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(

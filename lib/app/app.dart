@@ -18,6 +18,7 @@ import '../features/output/presentation/output_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/session/data/session_storage.dart';
 import '../features/session/presentation/session_start_screen.dart';
+import '../features/settings/presentation/settings_screen.dart';
 import '../shared/models/document_output.dart';
 import '../shared/widgets/alien_header.dart';
 import '../shared/widgets/app_bottom_nav.dart';
@@ -450,11 +451,7 @@ class _AppShellState extends State<AppShell> {
     }
 
     return Scaffold(
-      appBar: AlienHeader(
-        onOpenSettings: () {
-          _showConnectionDialog();
-        },
-      ),
+      appBar: AlienHeader(onOpenSettings: _openSettings),
       body: IndexedStack(
         index: MainTab.values.indexOf(_tab),
         children: [
@@ -468,8 +465,8 @@ class _AppShellState extends State<AppShell> {
             ocrFailureMessage: _ocrFailureMessage,
             userName: _userName,
             onOpenFiles: () => setState(() => _tab = MainTab.files),
-            onOpenSettings: () =>
-                Navigator.of(context).pushNamed(AppRoutes.settings),
+            onOpenSettings: _openSettings,
+            onOpenConnection: _showConnectionDialog,
             onOpenProfile: () => setState(() => _tab = MainTab.profile),
             onDeletePage: () async {
               if (_pageCount <= 0) return;
@@ -508,7 +505,19 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _showConnectionDialog() {
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsScreen(
+          onOpenConnection: () => _showConnectionDialog(fromSettings: true),
+        ),
+      ),
+    );
+  }
+
+  /// Raspberry Pi connection sheet. Opened from the Home status bar or the
+  /// Settings screen; [fromSettings] hides the link back to Settings.
+  void _showConnectionDialog({bool fromSettings = false}) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -614,16 +623,20 @@ class _AppShellState extends State<AppShell> {
                     ),
                   ),
                 ],
-                const SizedBox(height: AppSpacing.sm),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.of(context).pushNamed(AppRoutes.settings);
-                  },
-                  icon: const Icon(Icons.settings_rounded),
-                  label: const Text('All Settings & Preferences'),
-                  style: TextButton.styleFrom(foregroundColor: context.accent),
-                ),
+                if (!fromSettings) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _openSettings();
+                    },
+                    icon: const Icon(Icons.settings_rounded),
+                    label: const Text('All Settings & Preferences'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.accent,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

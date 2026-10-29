@@ -25,4 +25,23 @@ void main() {
     expect(headers.every((h) => h.icon != null), isTrue);
     expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(10));
   });
+
+  testWidgets('Connection Status tile opens the sheet callback', (
+    tester,
+  ) async {
+    var opened = false;
+    await tester.pumpWidget(
+      MaterialApp(home: SettingsScreen(onOpenConnection: () => opened = true)),
+    );
+
+    await tester.tap(find.text('Connection Status'));
+    expect(opened, isTrue);
+  });
+
+  testWidgets('Connection Status tile is hidden without a callback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+    expect(find.text('Connection Status'), findsNothing);
+  });
 }

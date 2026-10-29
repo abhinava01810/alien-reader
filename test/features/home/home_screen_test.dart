@@ -191,5 +191,29 @@ void main() {
       expect(find.text('No pages captured yet'), findsOneWidget);
       expect(find.text('0 Pages'), findsOneWidget);
     });
+
+    testWidgets('tapping the status bar opens the connection sheet', (
+      WidgetTester tester,
+    ) async {
+      var opened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomeScreen(
+              status: ReaderConnectionStatus.disconnected,
+              onConnect: () {},
+              onCapture: () {},
+              onFinish: () {},
+              pageCount: 0,
+              onOpenConnection: () => opened = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Disconnected'));
+      expect(opened, isTrue);
+    });
   });
 }
