@@ -477,7 +477,7 @@ class _AppShellState extends State<AppShell> {
               await _sessionStorage.savePageCount(newPageCount);
             },
           ),
-          const OutputScreen(),
+          OutputScreen(isProcessing: _status == ReaderConnectionStatus.busy),
           FilesScreen(device: _device),
           ProfileScreen(
             userName: _userName,
