@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/services/auth_service_cloud.dart';
+import '../../../core/services/cloud_api_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../features/auth/data/models/user_account.dart';
-import '../../../features/auth/data/services/auth_service.dart';
 import '../../../features/device/data/models/saved_device.dart';
 import '../../../features/device/data/services/device_storage_service.dart';
 import '../../../features/device/domain/reader_device.dart';
@@ -25,9 +25,15 @@ class ProfileScreen extends StatefulWidget {
     this.sessionActive = false,
     this.onDisconnect,
     this.onSignOut,
+    this.cloudUser,
+    this.cloudAuth,
   });
 
   final String? userName;
+
+  /// Account already fetched by the app shell; refreshed from `/auth/me`.
+  final CloudUser? cloudUser;
+  final CloudAuthService? cloudAuth;
   final ReaderConnectionStatus status;
   final int pageCount;
   final bool sessionActive;
@@ -40,7 +46,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _storage = DocumentStorageService();
-  final _authService = AuthService();
+  late final CloudAuthService _cloudAuth =
+      widget.cloudAuth ?? CloudAuthService();
   final _deviceStorage = DeviceStorageService();
 
   List<SavedDevice> _devices = [];
@@ -49,7 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _savedDocCount = 0;
   int _storageTotalBytes = 0;
   bool _statsLoading = true;
-  UserAccount? _currentUser;
+  late CloudUser? _user = widget.cloudUser;
 
   @override
   void initState() {
@@ -73,9 +80,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUser() async {
-    final user = await _authService.getCurrentUser();
-    if (mounted) {
-      setState(() => _currentUser = user);
+    try {
+      final user = await _cloudAuth.getCurrentUser();
+      if (mounted) setState(() => _user = user);
+    } catch (_) {
+      // Offline or session ended: keep what we have; the shell handles
+      // an expired session.
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.cloudUser != null && widget.cloudUser != oldWidget.cloudUser) {
+      _user = widget.cloudUser;
     }
   }
 
@@ -231,92 +249,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ─── Account actions ──────────────────────────────────────────────
 
+  /// Change password goes through the emailed reset link
+  /// (`POST /auth/password-reset/request`).
   Future<void> _showChangePasswordDialog() async {
-    final current = TextEditingController();
-    final next = TextEditingController();
-    final confirm = TextEditingController();
-    String? error;
-    var busy = false;
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('Change password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: current,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Current password',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: next,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New password'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: confirm,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm new password',
-                ),
-              ),
-              if (error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  error!,
-                  style: const TextStyle(color: AppColors.danger, fontSize: 13),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: busy ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: busy
-                  ? null
-                  : () async {
-                      if (next.text != confirm.text) {
-                        setLocal(() => error = 'New passwords do not match.');
-                        return;
-                      }
-                      setLocal(() {
-                        busy = true;
-                        error = null;
-                      });
-                      try {
-                        await _authService.changePassword(
-                          currentPassword: current.text,
-                          newPassword: next.text,
-                        );
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Password updated.')),
-                          );
-                        }
-                      } on AuthException catch (e) {
-                        setLocal(() {
-                          busy = false;
-                          error = e.message;
-                        });
-                      }
-                    },
-              child: const Text('Update'),
-            ),
-          ],
+    final email = _user?.email;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your account email is still loading. Try again.'),
         ),
+      );
+      return;
+    }
+
+    final send = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Change password'),
+        content: Text(
+          "We'll email a password reset link to $email. Follow it to set a "
+          'new password.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Send link'),
+          ),
+        ],
       ),
     );
+    if (send != true || !mounted) return;
+
+    try {
+      await _cloudAuth.requestPasswordReset(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Check $email for a reset link.')));
+    } on CloudApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Future<void> _showDeleteAccountDialog() async {
@@ -334,18 +313,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Your account is removed from this phone and you are signed '
-                'out. Saved documents stay on this phone. Enter your '
-                'password to confirm.',
+                'This permanently deletes your Naadh account and unpairs your '
+                'readers. Documents saved on this phone are not affected. '
+                'Enter your password to confirm.',
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: password,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
               ),
               if (error != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   error!,
                   style: const TextStyle(color: AppColors.danger, fontSize: 13),
@@ -361,22 +340,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.danger,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.onBrand,
               ),
               onPressed: busy
                   ? null
                   : () async {
+                      if (password.text.isEmpty) {
+                        setLocal(() => error = 'Enter your password.');
+                        return;
+                      }
                       setLocal(() {
                         busy = true;
                         error = null;
                       });
                       try {
-                        await _authService.deleteAccount(
-                          password: password.text,
-                        );
+                        await _cloudAuth.deleteAccount(password.text);
                         if (ctx.mounted) Navigator.pop(ctx);
                         widget.onSignOut?.call();
-                      } on AuthException catch (e) {
+                      } on CloudApiException catch (e) {
                         setLocal(() {
                           busy = false;
                           error = e.message;
@@ -582,7 +563,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  _currentUser?.username ??
+                  _user?.name ??
                       (widget.userName?.isNotEmpty == true
                           ? widget.userName!
                           : 'Guest'),
@@ -590,10 +571,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                if (_currentUser?.email != null) ...[
+                if (_user?.email != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    _currentUser!.email!,
+                    _user!.email,
                     style: TextStyle(color: muted, fontSize: 13),
                   ),
                 ],

@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/constants/app_strings.dart';
+import '../core/services/auth_service_cloud.dart';
+import '../core/services/cloud_api_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_shapes.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_controller.dart';
+import '../features/auth/presentation/login_screen.dart';
 import '../features/device/data/raspberry_pi_device.dart';
 import '../features/device/domain/reader_device.dart';
 import '../features/document/data/models/saved_document.dart';
@@ -17,7 +20,6 @@ import '../features/home/presentation/home_screen.dart';
 import '../features/output/presentation/output_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/session/data/session_storage.dart';
-import '../features/session/presentation/session_start_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../shared/models/document_output.dart';
 import '../shared/widgets/alien_header.dart';
@@ -27,7 +29,10 @@ import '../shared/widgets/splash_screen.dart';
 import 'router.dart';
 
 class AlienReaderApp extends StatefulWidget {
-  const AlienReaderApp({super.key});
+  const AlienReaderApp({super.key, this.cloudAuth});
+
+  /// Overrides the cloud auth service (tests).
+  final CloudAuthService? cloudAuth;
 
   @override
   State<AlienReaderApp> createState() => _AlienReaderAppState();
@@ -51,7 +56,7 @@ class _AlienReaderAppState extends State<AlienReaderApp> {
           darkTheme: AppTheme.dark,
           themeMode: ThemeController.instance.themeMode,
           onGenerateRoute: AppRouter.onGenerateRoute,
-          home: const SplashGate(child: AppShell()),
+          home: SplashGate(child: AppShell(cloudAuth: widget.cloudAuth)),
           debugShowCheckedModeBanner: false,
         );
       },
@@ -60,13 +65,24 @@ class _AlienReaderAppState extends State<AlienReaderApp> {
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({super.key, this.cloudAuth});
+
+  final CloudAuthService? cloudAuth;
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
+/// Whether the cloud session is still being checked, valid, or absent.
+enum _CloudAuthState { checking, signedIn, signedOut }
+
 class _AppShellState extends State<AppShell> {
+  late final CloudAuthService _cloudAuth =
+      widget.cloudAuth ?? CloudAuthService();
+  StreamSubscription<void>? _sessionExpiredSub;
+  _CloudAuthState _authState = _CloudAuthState.checking;
+  CloudUser? _cloudUser;
+
   final RaspberryPiDevice _device = RaspberryPiDevice();
   final SessionStorage _sessionStorage = SessionStorage();
   final DocumentStorageService _storageService = DocumentStorageService();
@@ -79,7 +95,6 @@ class _AppShellState extends State<AppShell> {
 
   int _pageCount = 0;
 
-  bool _sessionStarted = false;
   bool _isLoadingSession = true;
   bool _isCapturing = false;
   bool _isConnecting = false;
@@ -99,7 +114,51 @@ class _AppShellState extends State<AppShell> {
       }
     });
 
+    _sessionExpiredSub = _cloudAuth.api.onSessionExpired.listen(
+      (_) => _signOut(expired: true),
+    );
+
     _loadSavedSession();
+    _checkCloudSession();
+  }
+
+  /// Routes on stored tokens right away, then confirms them with
+  /// `GET /auth/me` in the background so a slow backend never blocks launch.
+  Future<void> _checkCloudSession() async {
+    final hasTokens = await _cloudAuth.isLoggedIn;
+    if (!mounted) return;
+    setState(() {
+      _authState = hasTokens
+          ? _CloudAuthState.signedIn
+          : _CloudAuthState.signedOut;
+    });
+    if (!hasTokens) return;
+
+    try {
+      final user = await _cloudAuth.getCurrentUser();
+      if (!mounted) return;
+      setState(() {
+        _cloudUser = user;
+        _userName = user.name;
+      });
+    } on SessionExpiredException {
+      // onSessionExpired already routes back to login.
+    } catch (_) {
+      // Offline or cold start: keep the stored session.
+    }
+  }
+
+  Future<void> _onCloudLoggedIn(CloudUser user) async {
+    setState(() {
+      _cloudUser = user;
+      _authState = _CloudAuthState.signedIn;
+    });
+    await _sessionStorage.saveSession(
+      userName: user.name,
+      connected: false,
+      pageCount: _pageCount,
+    );
+    await _onSessionStarted(user.name, null);
   }
 
   Future<void> _loadSavedSession() async {
@@ -112,10 +171,6 @@ class _AppShellState extends State<AppShell> {
       _userName = userName;
       _pageCount = pageCount;
 
-      if (userName != null && userName.isNotEmpty) {
-        _sessionStarted = true;
-      }
-
       _status = ReaderConnectionStatus.disconnected;
       _isLoadingSession = false;
     });
@@ -124,6 +179,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _statusSub.cancel();
+    _sessionExpiredSub?.cancel();
     _device.dispose();
     super.dispose();
   }
@@ -131,7 +187,6 @@ class _AppShellState extends State<AppShell> {
   Future<void> _onSessionStarted(String userName, String? accessToken) async {
     setState(() {
       _userName = userName;
-      _sessionStarted = true;
       _status = ReaderConnectionStatus.disconnected;
     });
 
@@ -163,7 +218,6 @@ class _AppShellState extends State<AppShell> {
 
       setState(() {
         _status = ReaderConnectionStatus.connected;
-        _sessionStarted = true;
         _ocrFailureMessage = null;
       });
 
@@ -397,17 +451,24 @@ class _AppShellState extends State<AppShell> {
   }
 
   /// Signs out of the application and clears session storage.
-  Future<void> _signOut() async {
+  /// Ends the Pi session and the cloud session, then shows login.
+  /// [expired] means the tokens were already rejected and cleared.
+  Future<void> _signOut({bool expired = false}) async {
+    if (_authState == _CloudAuthState.signedOut) return;
+
     try {
       await _device.endSession();
     } catch (_) {}
+
+    if (!expired) await _cloudAuth.logout();
 
     await _sessionStorage.clearSession();
 
     if (!mounted) return;
 
     setState(() {
-      _sessionStarted = false;
+      _authState = _CloudAuthState.signedOut;
+      _cloudUser = null;
       _userName = null;
       _pageCount = 0;
       _status = ReaderConnectionStatus.disconnected;
@@ -415,9 +476,15 @@ class _AppShellState extends State<AppShell> {
       _ocrFailureMessage = null;
     });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Signed out successfully.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          expired
+              ? 'Your session expired. Please log in again.'
+              : 'Signed out successfully.',
+        ),
+      ),
+    );
   }
 
   Future<void> _process() async {
@@ -442,12 +509,12 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingSession) {
+    if (_isLoadingSession || _authState == _CloudAuthState.checking) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (!_sessionStarted) {
-      return SessionStartScreen(onSessionStarted: _onSessionStarted);
+    if (_authState == _CloudAuthState.signedOut) {
+      return LoginScreen(auth: _cloudAuth, onLoggedIn: _onCloudLoggedIn);
     }
 
     return Scaffold(
@@ -484,6 +551,8 @@ class _AppShellState extends State<AppShell> {
           FilesScreen(device: _device),
           ProfileScreen(
             userName: _userName,
+            cloudUser: _cloudUser,
+            cloudAuth: _cloudAuth,
             status: _status,
             pageCount: _pageCount,
             sessionActive:

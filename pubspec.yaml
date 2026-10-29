@@ -45,6 +45,7 @@ dependencies:
   crypto: ^3.0.3
   audioplayers: ^6.0.0
   mobile_scanner: ^7.4.2
+  flutter_secure_storage: ^10.3.4
 
 dev_dependencies:
   flutter_test:
