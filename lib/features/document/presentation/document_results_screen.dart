@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/section_header.dart';
+import '../../../core/theme/app_shapes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/models/document_output.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -439,7 +441,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
           _SectionCard(
             title: 'Extracted Text',
             icon: Icons.text_snippet_rounded,
-            iconColor: AppColors.purpleMid,
+            iconColor: context.accent,
             text: widget.output.originalText,
             isReading: _activeSection == 'original',
             onReadAloud: () =>
@@ -585,23 +587,13 @@ class _CapturedImageCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.document_scanner_rounded,
-                size: 18,
-                color: AppColors.purpleMid,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Captured Document',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ],
+          SectionHeader(
+            title: 'Captured Document',
+            icon: Icons.document_scanner_rounded,
           ),
           const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppShapes.cardRadius),
             child: hasLocalImage
                 ? Image.file(
                     File(localImagePath!),
@@ -622,21 +614,19 @@ class _CapturedImageCard extends StatelessWidget {
                                 ? progress.cumulativeBytesLoaded /
                                       progress.expectedTotalBytes!
                                 : null,
-                            color: AppColors.purple,
+                            color: context.accent,
                           ),
                         ),
                       );
                     },
                     errorBuilder: (context, error, stackTrace) {
-                      final isDark =
-                          Theme.of(context).brightness == Brightness.dark;
                       return Container(
                         height: 180,
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.darkSurfaceElevated
-                              : AppColors.cloud,
-                          borderRadius: BorderRadius.circular(8),
+                          color: context.surfaceElevated,
+                          borderRadius: BorderRadius.circular(
+                            AppShapes.cardRadius,
+                          ),
                         ),
                         child: Center(
                           child: Column(
@@ -787,7 +777,7 @@ class _TtsButton extends StatelessWidget {
         color: isReading
             ? AppColors.orange.withValues(alpha: 0.12)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppShapes.cardRadius),
       ),
       child: IconButton(
         onPressed: onPressed,

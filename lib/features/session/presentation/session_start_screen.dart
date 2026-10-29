@@ -173,9 +173,9 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.lock_reset_rounded, color: AppColors.purple),
+                Icon(Icons.lock_reset_rounded, color: context.accent),
                 SizedBox(width: 8),
                 Text('Account Recovery', style: TextStyle(fontSize: 18)),
               ],
@@ -366,7 +366,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.4,
-                      color: isDark ? AppColors.darkText : AppColors.purple,
+                      color: isDark ? AppColors.darkText : context.accent,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -421,9 +421,8 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                                 boxShadow: !_isRegistering
                                     ? [
                                         BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.06,
-                                          ),
+                                          color: AppColors.darkBackground
+                                              .withValues(alpha: 0.06),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         ),
@@ -438,9 +437,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                                       ? FontWeight.w700
                                       : FontWeight.w500,
                                   color: !_isRegistering
-                                      ? (isDark
-                                            ? AppColors.purpleMid
-                                            : AppColors.purple)
+                                      ? (context.accent)
                                       : (isDark
                                             ? AppColors.darkTextMuted
                                             : AppColors.lightTextMuted),
@@ -475,9 +472,8 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                                 boxShadow: _isRegistering
                                     ? [
                                         BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.06,
-                                          ),
+                                          color: AppColors.darkBackground
+                                              .withValues(alpha: 0.06),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         ),
@@ -492,9 +488,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                                       ? FontWeight.w700
                                       : FontWeight.w500,
                                   color: _isRegistering
-                                      ? (isDark
-                                            ? AppColors.purpleMid
-                                            : AppColors.purple)
+                                      ? (context.accent)
                                       : (isDark
                                             ? AppColors.darkTextMuted
                                             : AppColors.lightTextMuted),
@@ -515,7 +509,9 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.danger.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(
+                          AppShapes.cardRadius,
+                        ),
                         border: Border.all(
                           color: AppColors.danger.withValues(alpha: 0.4),
                         ),
@@ -549,7 +545,9 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.success.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(
+                          AppShapes.cardRadius,
+                        ),
                         border: Border.all(
                           color: AppColors.success.withValues(alpha: 0.4),
                         ),

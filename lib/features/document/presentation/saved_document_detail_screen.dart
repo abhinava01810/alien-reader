@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/section_header.dart';
+import '../../../core/theme/app_shapes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../data/models/saved_document.dart';
@@ -223,7 +225,7 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
           _SavedSectionCard(
             title: 'Extracted Text',
             icon: Icons.text_snippet_rounded,
-            iconColor: AppColors.purpleMid,
+            iconColor: context.accent,
             text: doc.originalText,
             isReading: _activeSection == 'original',
             onReadAloud: () => _toggleSpeak(doc.originalText, 'original'),
@@ -424,11 +426,10 @@ class _MetaChip extends StatelessWidget {
     final m = date.minute.toString().padLeft(2, '0');
     final label = '${date.day} ${months[date.month - 1]} ${date.year} · $h:$m';
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
+        color: context.surfaceElevated,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -462,34 +463,20 @@ class _LocalImageCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.document_scanner_rounded,
-                size: 18,
-                color: AppColors.purpleMid,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Captured Document',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ],
+          SectionHeader(
+            title: 'Captured Document',
+            icon: Icons.document_scanner_rounded,
           ),
           const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppShapes.cardRadius),
             child: file.existsSync()
                 ? Image.file(file, fit: BoxFit.contain, width: double.infinity)
                 : Builder(
                     builder: (context) {
-                      final isDark =
-                          Theme.of(context).brightness == Brightness.dark;
                       return Container(
                         height: 160,
-                        color: isDark
-                            ? AppColors.darkSurfaceElevated
-                            : AppColors.cloud,
+                        color: context.surfaceElevated,
                         child: Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -570,9 +557,7 @@ class _SavedSectionCard extends StatelessWidget {
                   avatar: Icon(
                     action.icon,
                     size: 15,
-                    color: action.active
-                        ? AppColors.orange
-                        : AppColors.purpleMid,
+                    color: action.active ? AppColors.orange : context.accent,
                   ),
                   label: Text(
                     action.label,

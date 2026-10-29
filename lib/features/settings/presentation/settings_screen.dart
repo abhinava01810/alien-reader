@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/router.dart';
 import '../../../core/constants/pi_config.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -35,7 +36,7 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('System Default'),
                   subtitle: const Text('Adapts to phone system theme'),
                   trailing: current == ThemeMode.system
-                      ? const Icon(Icons.check_rounded, color: AppColors.purple)
+                      ? Icon(Icons.check_rounded, color: context.accent)
                       : null,
                   onTap: () async {
                     await ThemeController.instance.setThemeMode(
@@ -51,7 +52,7 @@ class SettingsScreen extends StatelessWidget {
                     'Clean white background with purple accents',
                   ),
                   trailing: current == ThemeMode.light
-                      ? const Icon(Icons.check_rounded, color: AppColors.purple)
+                      ? Icon(Icons.check_rounded, color: context.accent)
                       : null,
                   onTap: () async {
                     await ThemeController.instance.setThemeMode(
@@ -67,7 +68,7 @@ class SettingsScreen extends StatelessWidget {
                     'Rich charcoal background with purple accents',
                   ),
                   trailing: current == ThemeMode.dark
-                      ? const Icon(Icons.check_rounded, color: AppColors.purple)
+                      ? Icon(Icons.check_rounded, color: context.accent)
                       : null,
                   onTap: () async {
                     await ThemeController.instance.setThemeMode(ThemeMode.dark);
@@ -134,9 +135,9 @@ class SettingsScreen extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.memory_rounded, color: AppColors.purple),
+            Icon(Icons.memory_rounded, color: context.accent),
             SizedBox(width: 8),
             Text('Device Info'),
           ],
@@ -181,13 +182,7 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'DEVICE',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                  ),
-                ),
+                SectionHeader(title: 'Device'),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -196,26 +191,26 @@ class SettingsScreen extends StatelessWidget {
                     backgroundColor: isDark
                         ? AppColors.purpleDarkTint
                         : AppColors.purpleLightTint,
-                    child: const Icon(
+                    child: Icon(
                       Icons.qr_code_scanner_rounded,
                       size: 20,
-                      color: AppColors.purple,
+                      color: context.accent,
                     ),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Add Device (QR Setup)',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.purple,
+                      color: context.accent,
                     ),
                   ),
                   subtitle: const Text(
                     'Scan QR code on your Naadh reader',
                     style: TextStyle(fontSize: 12),
                   ),
-                  trailing: const Icon(
+                  trailing: Icon(
                     Icons.chevron_right_rounded,
-                    color: AppColors.purple,
+                    color: context.accent,
                   ),
                   onTap: () {
                     Navigator.of(context).pushNamed(AppRoutes.deviceQrScanner);
@@ -249,20 +244,14 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'APPEARANCE & THEME',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                  ),
-                ),
+                SectionHeader(title: 'Appearance & Theme'),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
                     isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
                     size: 22,
-                    color: AppColors.purple,
+                    color: context.accent,
                   ),
                   title: const Text('Theme Mode'),
                   subtitle: Text(switch (ThemeController.instance.themeMode) {
@@ -283,13 +272,7 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'SCANNING & PROCESSING',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                  ),
-                ),
+                SectionHeader(title: 'Scanning & Processing'),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -315,13 +298,7 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'AUDIO & SYNTHESIS',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                  ),
-                ),
+                SectionHeader(title: 'Audio & Synthesis'),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -347,13 +324,7 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'ABOUT',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                  ),
-                ),
+                SectionHeader(title: 'About'),
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,

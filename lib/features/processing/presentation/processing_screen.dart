@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_shapes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_card.dart';
 
@@ -100,49 +101,54 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            AppCard(
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.purple.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.document_scanner_rounded,
-                      color: AppColors.purple,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Captured Page ${widget.pageNumber}',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
+            if (_error == null)
+              _buildProgressHero()
+            else
+              AppCard(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.purple.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(
+                          AppShapes.cardRadius,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _error != null
-                              ? 'Processing failed'
-                              : _statusSubtitle(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _error != null
-                                ? AppColors.danger
-                                : context.mutedText,
+                      ),
+                      child: Icon(
+                        Icons.document_scanner_rounded,
+                        color: context.accent,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Captured Page ${widget.pageNumber}',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            _error != null
+                                ? 'Processing failed'
+                                : _statusSubtitle(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _error != null
+                                  ? AppColors.danger
+                                  : context.mutedText,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
             if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
@@ -156,18 +162,18 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                     ),
                     const SizedBox(height: 10),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppShapes.cardRadius),
                       child: Image.network(
                         widget.imageUrl!,
                         fit: BoxFit.contain,
                         width: double.infinity,
                         loadingBuilder: (context, child, progress) {
                           if (progress == null) return child;
-                          return const SizedBox(
+                          return SizedBox(
                             height: 160,
                             child: Center(
                               child: CircularProgressIndicator(
-                                color: AppColors.purple,
+                                color: context.accent,
                               ),
                             ),
                           );
@@ -233,25 +239,45 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Processing document...',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(
-                      value: _progressValue(),
-                      color: AppColors.purple,
-                      backgroundColor: AppColors.cloud,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    ..._buildSteps(),
-                  ],
+                  children: [..._buildSteps()],
                 ),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProgressHero() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+      child: Column(
+        children: [
+          SizedBox(
+            width: 72,
+            height: 72,
+            child: CircularProgressIndicator(
+              strokeWidth: 5,
+              color: context.accent,
+              backgroundColor: context.surfaceElevated,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Reading your document...',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Page ${widget.pageNumber} · ${_statusSubtitle()}',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12.5, color: context.mutedText),
+          ),
+        ],
       ),
     );
   }
@@ -268,21 +294,6 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
         return 'Processing complete — saving to phone...';
       case _PiStatus.failed:
         return 'Processing failed';
-    }
-  }
-
-  double _progressValue() {
-    switch (_piStatus) {
-      case _PiStatus.capturing:
-        return 0.1;
-      case _PiStatus.queued:
-        return 0.25;
-      case _PiStatus.processing:
-        return 0.6;
-      case _PiStatus.ready:
-        return 0.9;
-      case _PiStatus.failed:
-        return 0.0;
     }
   }
 
@@ -307,9 +318,9 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                   color: AppColors.success,
                   size: 18,
                 )
-              : const CircularProgressIndicator(
+              : CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppColors.purpleMid,
+                  color: context.accent,
                 ),
         ),
         title: Text(
