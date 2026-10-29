@@ -38,7 +38,7 @@ class AppBottomNav extends StatelessWidget {
         onDestinationSelected: (index) => onChanged(MainTab.values[index]),
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.home_rounded),
+            icon: const Icon(Icons.home_outlined),
             selectedIcon: Icon(
               Icons.home_rounded,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
@@ -46,7 +46,7 @@ class AppBottomNav extends StatelessWidget {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.graphic_eq_rounded),
+            icon: const Icon(Icons.graphic_eq_outlined),
             selectedIcon: Icon(
               Icons.graphic_eq_rounded,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
@@ -54,7 +54,7 @@ class AppBottomNav extends StatelessWidget {
             label: 'Output',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.folder_rounded),
+            icon: const Icon(Icons.folder_outlined),
             selectedIcon: Icon(
               Icons.folder_rounded,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
@@ -62,7 +62,7 @@ class AppBottomNav extends StatelessWidget {
             label: 'Files',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.person_rounded),
+            icon: const Icon(Icons.person_outlined),
             selectedIcon: Icon(
               Icons.person_rounded,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
