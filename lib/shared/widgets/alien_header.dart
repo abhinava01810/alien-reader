@@ -22,11 +22,20 @@ class AlienHeader extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(
-            'assets/images/alien_innovations_logo.png',
-            width: 32,
-            height: 32,
-            fit: BoxFit.contain,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/app_icon.png',
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Image.asset(
+                'assets/images/alien_innovations_logo.png',
+                width: 32,
+                height: 32,
+                fit: BoxFit.contain,
+              ),
+            ),
           ),
           const SizedBox(width: 10),
           Text(
@@ -47,7 +56,7 @@ class AlienHeader extends StatelessWidget implements PreferredSizeWidget {
             onPressed: onOpenSettings,
             tooltip: 'Settings & Device Connections',
             icon: Icon(
-              Icons.settings_outlined,
+              Icons.settings_rounded,
               color: isDark ? AppColors.darkText : AppColors.charcoal,
               size: 24,
             ),

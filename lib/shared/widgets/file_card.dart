@@ -22,7 +22,7 @@ class FileCard extends StatelessWidget {
       child: AppCard(
         child: Row(
           children: [
-            const Icon(Icons.description_outlined),
+            const Icon(Icons.description_rounded),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -39,7 +39,7 @@ class FileCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right),
+            const Icon(Icons.chevron_right_rounded),
           ],
         ),
       ),

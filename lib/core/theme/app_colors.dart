@@ -22,6 +22,7 @@ abstract final class AppColors {
 
   static const Color lightBackground = Color(0xFFFAFAFB);
   static const Color lightSurface = Colors.white;
+  static const Color lightSurfaceElevated = Color(0xFFF3F4F6);
   static const Color lightBorder = Color(0xFFE4E6EA);
   static const Color lightText = Color(0xFF191B1F);
   static const Color lightTextMuted = Color(0xFF6B7280);

@@ -38,33 +38,33 @@ class AppBottomNav extends StatelessWidget {
         onDestinationSelected: (index) => onChanged(MainTab.values[index]),
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
+            icon: const Icon(Icons.home_rounded),
             selectedIcon: Icon(
-              Icons.home,
+              Icons.home_rounded,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
             ),
             label: 'Home',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.tune_outlined),
+            icon: const Icon(Icons.graphic_eq_rounded),
             selectedIcon: Icon(
-              Icons.tune,
+              Icons.graphic_eq_rounded,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
             ),
             label: 'Output',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.folder_outlined),
+            icon: const Icon(Icons.folder_rounded),
             selectedIcon: Icon(
-              Icons.folder,
+              Icons.folder_rounded,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
             ),
             label: 'Files',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.person_outline),
+            icon: const Icon(Icons.person_rounded),
             selectedIcon: Icon(
-              Icons.person,
+              Icons.person_rounded,
               color: isDark ? AppColors.purpleMid : AppColors.purple,
             ),
             label: 'Profile',

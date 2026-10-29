@@ -5,7 +5,7 @@ class EmptyState extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
-    this.icon = Icons.inbox_outlined,
+    this.icon = Icons.inbox_rounded,
   });
 
   final String title;

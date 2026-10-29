@@ -36,7 +36,7 @@ class MockAudioPlayer extends StatelessWidget {
             children: [
               const CircleAvatar(
                 backgroundColor: AppColors.purple,
-                child: Icon(Icons.play_arrow, color: Colors.white),
+                child: Icon(Icons.play_arrow_rounded, color: Colors.white),
               ),
               const SizedBox(width: 12),
               Expanded(

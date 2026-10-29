@@ -26,7 +26,7 @@ class ConnectionStatusChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.circle, size: 8, color: color),
+          Icon(Icons.circle_rounded, size: 8, color: color),
           const SizedBox(width: 6),
           Text(
             label,
