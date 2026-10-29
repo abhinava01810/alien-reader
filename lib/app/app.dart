@@ -509,6 +509,8 @@ class _AppShellState extends State<AppShell> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => SettingsScreen(
+          status: _status,
+          statusStream: _device.status,
           onOpenConnection: () => _showConnectionDialog(fromSettings: true),
         ),
       ),
