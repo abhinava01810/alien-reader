@@ -17,7 +17,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  static const _minPasswordLength = 8;
+  /// Matches the backend rule (RegisterIn.password min_length).
+  static const _minPasswordLength = 10;
 
   late final CloudAuthService _auth = widget.auth ?? CloudAuthService();
   final _name = TextEditingController();

@@ -72,11 +72,12 @@ void main() {
 
     await tester.enterText(find.byType(TextField).at(0), 'Alice');
     await tester.enterText(find.byType(TextField).at(1), 'alice@example.com');
-    await tester.enterText(find.byType(TextField).at(2), 'short');
+    // Nine characters: one short of the backend's minimum.
+    await tester.enterText(find.byType(TextField).at(2), 'ninechars');
     await tester.tap(find.text('Register'));
     await tester.pump();
     expect(
-      find.text('Password must be at least 8 characters.'),
+      find.text('Password must be at least 10 characters.'),
       findsOneWidget,
     );
 
