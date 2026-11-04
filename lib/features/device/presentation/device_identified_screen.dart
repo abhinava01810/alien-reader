@@ -52,7 +52,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).pushNamed(
-                      AppRoutes.wifiOnboarding,
+                      AppRoutes.devicePairing,
                       arguments: payload.deviceId,
                     );
                   },
@@ -339,7 +339,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
               Icon(Icons.network_wifi_rounded, size: 20, color: context.accent),
               const SizedBox(width: 8),
               Text(
-                'Next Step: Wi-Fi Provisioning',
+                'Next Step: Pair your reader',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: context.strongText,
@@ -349,7 +349,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
           ),
           const Divider(height: 20),
           Text(
-            'Authenticate with the device-specific PIN/secret printed on your reader, select your local Wi-Fi network, and securely transfer credentials to the device.',
+            'Join the NAADH-Setup hotspot, press the button on your reader to confirm it is in your hands, then choose your Wi-Fi network.',
             style: TextStyle(
               fontSize: 12.5,
               color: context.mutedText,
