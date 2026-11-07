@@ -26,6 +26,7 @@ class _FakeBinding implements NetworkBinding {
   int binds = 0;
   int releases = 0;
   final List<String?> joinPasswords = [];
+  final List<String> joinSsids = [];
 
   @override
   Future<HotspotJoin> joinHotspot({
@@ -34,6 +35,7 @@ class _FakeBinding implements NetworkBinding {
     Duration timeout = const Duration(seconds: 45),
   }) async {
     joinPasswords.add(passphrase);
+    joinSsids.add(ssid);
     return joinResult;
   }
 
@@ -46,14 +48,15 @@ class _FakeBinding implements NetworkBinding {
 
 /// In-memory stand-in for the encrypted hotspot-password store.
 class _Passwords extends HotspotPasswordStore {
-  _Passwords([this.value]);
-  String? value;
+  _Passwords([Map<String, String>? values]) : values = values ?? {};
+  final Map<String, String> values;
   @override
-  Future<String?> read() async => value;
+  Future<String?> read(String deviceId) async => values[deviceId];
   @override
-  Future<void> save(String password) async => value = password;
+  Future<void> save(String deviceId, String password) async =>
+      values[deviceId] = password;
   @override
-  Future<void> clear() async => value = null;
+  Future<void> clear(String deviceId) async => values.remove(deviceId);
 }
 
 /// A scripted reader. [pollReplies] are served in order, then the last repeats.
@@ -125,6 +128,8 @@ Future<void> _pump(
   _Probe? probe,
   _Passwords? passwords,
   bool settle = true,
+  String? qrSsid,
+  String? qrPassword,
 }) async {
   tester.view.physicalSize = const Size(800, 2400);
   tester.view.devicePixelRatio = 1;
@@ -150,6 +155,8 @@ Future<void> _pump(
         confirmInterval: const Duration(milliseconds: 100),
         confirmTimeout: const Duration(milliseconds: 400),
         hotspotPasswords: passwords ?? _Passwords(),
+        hotspotSsid: qrSsid,
+        hotspotPassword: qrPassword,
       ),
     ),
   );
@@ -556,98 +563,107 @@ void main() {
   });
 
   group('joining the hotspot from the app', () {
-    testWidgets('a saved password joins on open and starts setup', (
-      tester,
-    ) async {
-      final binding = _FakeBinding(joinResult: HotspotJoin.connected);
-      final reader = _Reader(
-        pollReplies: [
-          _json({'status': 'pending'}, _pending),
-        ],
-      );
-      await _pump(
-        tester,
-        reader: reader,
-        binding: binding,
-        passwords: _Passwords('hotspot-pass'),
-        settle: false,
-      );
+    _Reader pendingReader() => _Reader(
+      pollReplies: [
+        _json({'status': 'pending'}, _pending),
+      ],
+    );
 
-      expect(binding.joinPasswords, ['hotspot-pass']);
-      // Already bound to the hotspot network: no generic Wi-Fi bind.
-      expect(binding.binds, 0);
-      expect(
-        find.text('Press the button on your device to confirm setup'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('no saved password: nothing happens until asked', (
-      tester,
-    ) async {
-      final binding = _FakeBinding(joinResult: HotspotJoin.connected);
-      await _pump(tester, reader: _Reader(), binding: binding);
-      expect(binding.joinPasswords, isEmpty);
-      expect(find.text('Connect automatically'), findsOneWidget);
-      expect(find.text('Continue'), findsOneWidget);
-    });
-
-    testWidgets('typed password is used, then remembered on success', (
+    testWidgets('QR password and SSID join on open, with no prompt', (
       tester,
     ) async {
       final binding = _FakeBinding(joinResult: HotspotJoin.connected);
       final passwords = _Passwords();
       await _pump(
         tester,
-        reader: _Reader(
-          pollReplies: [
-            _json({'status': 'pending'}, _pending),
-          ],
-        ),
+        reader: pendingReader(),
         binding: binding,
         passwords: passwords,
+        qrSsid: 'NAADH-Setup-0123',
+        qrPassword: 'qr-hotspot-pass',
+        settle: false,
       );
-      await tester.tap(find.text('Connect automatically'));
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        ),
-        'typed-pass',
-      );
-      await tester.tap(find.text('Connect'));
-      await _advance(tester, 4);
 
-      expect(binding.joinPasswords, ['typed-pass']);
-      expect(passwords.value, 'typed-pass');
+      expect(binding.joinPasswords, ['qr-hotspot-pass']);
+      expect(binding.joinSsids, ['NAADH-Setup-0123']);
+      // Already bound to the hotspot network: no generic Wi-Fi bind.
+      expect(binding.binds, 0);
+      // Never asked for the hotspot password.
+      expect(find.byType(AlertDialog), findsNothing);
       expect(
         find.text('Press the button on your device to confirm setup'),
         findsOneWidget,
       );
+      // Kept encrypted for this reader only.
+      expect(passwords.values, {'NAADH-000123': 'qr-hotspot-pass'});
     });
 
-    testWidgets('declined or not found: falls back to joining by hand', (
+    testWidgets('a password saved for this reader joins on open', (
       tester,
     ) async {
-      final binding = _FakeBinding(joinResult: HotspotJoin.unavailable);
-      final passwords = _Passwords('old-pass');
+      final binding = _FakeBinding(joinResult: HotspotJoin.connected);
+      await _pump(
+        tester,
+        reader: pendingReader(),
+        binding: binding,
+        passwords: _Passwords({'NAADH-000123': 'saved-pass'}),
+        settle: false,
+      );
+      expect(binding.joinPasswords, ['saved-pass']);
+      expect(binding.joinSsids, ['NAADH-Setup']);
+    });
+
+    testWidgets("another reader's saved password is not used", (tester) async {
+      final binding = _FakeBinding(joinResult: HotspotJoin.connected);
       await _pump(
         tester,
         reader: _Reader(),
         binding: binding,
-        passwords: passwords,
+        passwords: _Passwords({'NAADH-OTHER': 'other-pass'}),
       );
-      await _advance(tester, 3);
+      expect(binding.joinPasswords, isEmpty);
+    });
+
+    testWidgets('no known password: manual steps only, never a prompt', (
+      tester,
+    ) async {
+      final binding = _FakeBinding(joinResult: HotspotJoin.connected);
+      await _pump(tester, reader: _Reader(), binding: binding);
+      expect(binding.joinPasswords, isEmpty);
+      expect(find.text('Connect automatically'), findsNothing);
+      expect(find.text("Join the reader's Wi-Fi"), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+    });
+
+    testWidgets('declined or not found: falls back, retry needs no typing', (
+      tester,
+    ) async {
+      final binding = _FakeBinding(joinResult: HotspotJoin.unavailable);
+      await _pump(
+        tester,
+        reader: pendingReader(),
+        binding: binding,
+        qrPassword: 'qr-hotspot-pass',
+      );
 
       expect(
         find.textContaining("Couldn't join NAADH-Setup automatically"),
         findsOneWidget,
       );
-      expect(find.textContaining('saved password'), findsOneWidget);
       expect(find.text('Or join it by hand'), findsOneWidget);
       expect(find.text('Continue'), findsOneWidget);
-      expect(find.text('Connect automatically'), findsOneWidget);
+
+      // Retry straight away with the QR password.
+      binding.joinResult = HotspotJoin.connected;
+      await tester.tap(find.text('Connect automatically'));
+      await _advance(tester, 4);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(binding.joinPasswords, ['qr-hotspot-pass', 'qr-hotspot-pass']);
+      expect(
+        find.text('Press the button on your device to confirm setup'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('permission refused: explains and offers the manual path', (
@@ -657,9 +673,8 @@ void main() {
         tester,
         reader: _Reader(),
         binding: _FakeBinding(joinResult: HotspotJoin.permissionDenied),
-        passwords: _Passwords('p'),
+        qrPassword: 'qr-hotspot-pass',
       );
-      await _advance(tester, 3);
       expect(find.textContaining('needs the Wi-Fi permission'), findsOneWidget);
       expect(find.text('Continue'), findsOneWidget);
     });

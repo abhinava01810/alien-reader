@@ -120,13 +120,20 @@ abstract final class AppRouter {
         );
 
       case AppRoutes.devicePairing:
+        // A scanned QR may carry the setup hotspot's name and password, which
+        // go straight to the hotspot join and are never shown.
+        final qr = settings.arguments is DeviceQrPayload
+            ? settings.arguments as DeviceQrPayload
+            : null;
         final deviceId = (settings.arguments is String)
             ? settings.arguments as String
-            : (settings.arguments is DeviceQrPayload
-                  ? (settings.arguments as DeviceQrPayload).deviceId
-                  : 'NAADH-UNKNOWN');
+            : (qr?.deviceId ?? 'NAADH-UNKNOWN');
         return MaterialPageRoute<void>(
-          builder: (_) => DevicePairingScreen(deviceId: deviceId),
+          builder: (_) => DevicePairingScreen(
+            deviceId: deviceId,
+            hotspotSsid: qr?.hotspotSsid,
+            hotspotPassword: qr?.hotspotPassword,
+          ),
           settings: settings,
         );
 

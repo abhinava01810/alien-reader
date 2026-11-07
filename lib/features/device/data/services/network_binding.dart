@@ -98,33 +98,35 @@ class PlatformNetworkBinding implements NetworkBinding {
   }
 }
 
-/// The reader hotspot's Wi-Fi password, typed once by the person and kept
-/// only in encrypted storage on this phone. Never in source, logs or QR codes.
+/// A reader's setup-hotspot password (from its QR code), kept only in
+/// encrypted storage on this phone after a successful join, one entry per
+/// reader. Never logged or shown.
 class HotspotPasswordStore {
   HotspotPasswordStore([FlutterSecureStorage? storage])
     : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
-  static const _key = 'setup_hotspot_password';
 
-  Future<String?> read() async {
+  static String _key(String deviceId) => 'setup_hotspot_password.$deviceId';
+
+  Future<String?> read(String deviceId) async {
     try {
-      final value = await _storage.read(key: _key);
+      final value = await _storage.read(key: _key(deviceId));
       return (value == null || value.isEmpty) ? null : value;
     } catch (_) {
       return null;
     }
   }
 
-  Future<void> save(String password) async {
+  Future<void> save(String deviceId, String password) async {
     try {
-      await _storage.write(key: _key, value: password);
+      await _storage.write(key: _key(deviceId), value: password);
     } catch (_) {}
   }
 
-  Future<void> clear() async {
+  Future<void> clear(String deviceId) async {
     try {
-      await _storage.delete(key: _key);
+      await _storage.delete(key: _key(deviceId));
     } catch (_) {}
   }
 }

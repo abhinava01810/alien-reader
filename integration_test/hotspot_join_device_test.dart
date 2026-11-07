@@ -17,13 +17,13 @@ const _password = String.fromEnvironment(
 );
 const _expectJoin = bool.fromEnvironment('EXPECT_JOIN');
 
-class _OneRunPasswords extends HotspotPasswordStore {
+class _NoStore extends HotspotPasswordStore {
   @override
-  Future<String?> read() async => _password;
+  Future<String?> read(String deviceId) async => null;
   @override
-  Future<void> save(String password) async {}
+  Future<void> save(String deviceId, String password) async {}
   @override
-  Future<void> clear() async {}
+  Future<void> clear(String deviceId) async {}
 }
 
 String _texts() => find
@@ -41,7 +41,9 @@ void main() {
       MaterialApp(
         home: DevicePairingScreen(
           deviceId: 'NAADH-TEST',
-          hotspotPasswords: _OneRunPasswords(),
+          hotspotPasswords: _NoStore(),
+          // As if read from the reader's QR code.
+          hotspotPassword: _password,
           joinTimeout: const Duration(seconds: 40),
         ),
       ),

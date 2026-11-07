@@ -204,4 +204,67 @@ void main() {
       expect(updated.setupStatus, equals(DeviceSetupStatus.configured));
     });
   });
+
+  group('DeviceQrPayload setup hotspot', () {
+    const withWifi =
+        'NAADH://setup?device_id=NAADH-000123&ssid=NAADH-Setup'
+        '&wifi_password=Hotspot%2BPass-123&batch=7';
+
+    test('reads the hotspot SSID and password', () {
+      final p = DeviceQrPayload.parse(withWifi);
+      expect(p.deviceId, 'NAADH-000123');
+      expect(p.hotspotSsid, 'NAADH-Setup');
+      expect(p.hotspotPassword, 'Hotspot+Pass-123');
+      expect(p.additionalParams, {'batch': '7'});
+    });
+
+    test('the password never appears in raw, params or toString', () {
+      final p = DeviceQrPayload.parse(withWifi);
+      for (final text in [p.raw, p.toString(), p.additionalParams.toString()]) {
+        expect(text, isNot(contains('Hotspot')));
+        expect(text, isNot(contains('wifi_password')));
+      }
+      expect(p.toString(), contains('password: present'));
+    });
+
+    test('a QR without hotspot details still works', () {
+      final p = DeviceQrPayload.parse('NAADH://setup?device_id=NAADH-000123');
+      expect(p.hotspotSsid, isNull);
+      expect(p.hotspotPassword, isNull);
+    });
+
+    test('rejects a password WPA2 cannot use, without echoing it', () {
+      for (final bad in ['short', 'x' * 64]) {
+        expect(
+          () => DeviceQrPayload.parse(
+            'NAADH://setup?device_id=NAADH-1&wifi_password=$bad',
+          ),
+          throwsA(
+            isA<QrPayloadException>().having(
+              (e) => e.message,
+              'message',
+              isNot(contains(bad)),
+            ),
+          ),
+        );
+      }
+      // 64 hex digits is a raw WPA2 key and is allowed.
+      final hex = 'a1' * 32;
+      expect(
+        DeviceQrPayload.parse(
+          'NAADH://setup?device_id=NAADH-1&wifi_password=$hex',
+        ).hotspotPassword,
+        hex,
+      );
+    });
+
+    test('rejects an SSID longer than 32 bytes', () {
+      expect(
+        () => DeviceQrPayload.parse(
+          'NAADH://setup?device_id=NAADH-1&ssid=${'S' * 33}',
+        ),
+        throwsA(isA<QrPayloadException>()),
+      );
+    });
+  });
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class QrPayloadException implements Exception {
   final String message;
   const QrPayloadException(this.message);
@@ -8,10 +10,14 @@ class QrPayloadException implements Exception {
 
 /// Represents the validated contents of a Naadh device onboarding QR code.
 ///
-/// Format: `NAADH://setup?device_id=NAADH-000123`
+/// Format: `NAADH://setup?device_id=NAADH-000123`, optionally with the
+/// reader's setup hotspot: `&ssid=NAADH-Setup&wifi_password=...`.
 ///
 /// Security & Architectural considerations:
 /// - A scanned device ID is an identifier, NOT proof of ownership or an auth token.
+/// - The hotspot password is only used to join the reader's setup hotspot.
+///   It is kept out of [raw], [additionalParams] and [toString], and must
+///   never be logged or shown.
 /// - Arbitrary URLs and unsupported schemes are rejected.
 /// - Designed with forward-compatibility for optional versioning and setup hints.
 class DeviceQrPayload {
@@ -27,13 +33,40 @@ class DeviceQrPayload {
   final String? model;
   final Map<String, String> additionalParams;
 
+  /// Name of the reader's setup hotspot, when the QR gives one.
+  final String? hotspotSsid;
+
+  /// WPA2 password of the reader's setup hotspot, when the QR gives one.
+  final String? hotspotPassword;
+
   const DeviceQrPayload({
     required this.raw,
     required this.deviceId,
     this.version,
     this.model,
     this.additionalParams = const {},
+    this.hotspotSsid,
+    this.hotspotPassword,
   });
+
+  static const _ssidKeys = {'ssid', 'wifi_ssid', 'hotspot_ssid'};
+  static const _passwordKeys = {'wifi_password', 'hotspot_password'};
+
+  static String? _first(Map<String, String> params, Set<String> keys) {
+    for (final k in keys) {
+      final v = params[k];
+      if (v != null && v.isNotEmpty) return v;
+    }
+    return null;
+  }
+
+  /// WPA2-Personal: 8–63 printable ASCII characters, or 64 hex digits.
+  static bool _validWpa2Password(String p) {
+    if (RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(p)) return true;
+    return p.length >= 8 &&
+        p.length <= 63 &&
+        p.codeUnits.every((c) => c >= 0x20 && c <= 0x7E);
+  }
 
   /// Parses a raw QR code string into a validated [DeviceQrPayload].
   ///
@@ -103,29 +136,57 @@ class DeviceQrPayload {
       );
     }
 
-    // 4. Extract optional versioning and metadata
+    // 4. Optional setup hotspot. Errors never repeat the password.
+    final ssid = _first(queryParams, _ssidKeys)?.trim();
+    if (ssid != null && (ssid.isEmpty || utf8.encode(ssid).length > 32)) {
+      throw const QrPayloadException(
+        'Invalid hotspot name in QR code (must be 1-32 bytes).',
+      );
+    }
+    final password = _first(queryParams, _passwordKeys);
+    if (password != null && !_validWpa2Password(password)) {
+      throw const QrPayloadException(
+        'Invalid hotspot password in QR code (WPA2 needs 8-63 characters).',
+      );
+    }
+
+    // 5. Extract optional versioning and metadata
     final version = queryParams['version'] ?? queryParams['v'];
     final model = queryParams['model'];
 
     final additional = <String, String>{};
     queryParams.forEach((key, value) {
       if (!const {
-        'device_id',
-        'deviceId',
-        'version',
-        'v',
-        'model',
-      }.contains(key)) {
+            'device_id',
+            'deviceId',
+            'version',
+            'v',
+            'model',
+          }.contains(key) &&
+          !_ssidKeys.contains(key) &&
+          !_passwordKeys.contains(key)) {
         additional[key] = value;
       }
     });
 
+    // Never keep the password in the raw text.
+    final safeRaw = password == null
+        ? trimmed
+        : uri
+              .replace(
+                queryParameters: Map.of(queryParams)
+                  ..removeWhere((k, _) => _passwordKeys.contains(k)),
+              )
+              .toString();
+
     return DeviceQrPayload(
-      raw: trimmed,
+      raw: safeRaw,
       deviceId: trimmedDeviceId,
       version: version,
       model: model,
       additionalParams: Map.unmodifiable(additional),
+      hotspotSsid: ssid,
+      hotspotPassword: password,
     );
   }
 
@@ -140,5 +201,7 @@ class DeviceQrPayload {
 
   @override
   String toString() =>
-      'DeviceQrPayload(deviceId: $deviceId, version: $version)';
+      'DeviceQrPayload(deviceId: $deviceId, version: $version, '
+      'hotspot: ${hotspotSsid ?? '-'}, '
+      'password: ${hotspotPassword == null ? 'none' : 'present'})';
 }

@@ -55,6 +55,8 @@ class DevicePairingScreen extends StatefulWidget {
     this.confirmInterval = const Duration(seconds: 3),
     this.confirmTimeout = const Duration(seconds: 60),
     this.hotspotPasswords,
+    this.hotspotSsid,
+    this.hotspotPassword,
     this.autoJoin = true,
     this.joinTimeout = const Duration(seconds: 45),
   });
@@ -78,11 +80,19 @@ class DevicePairingScreen extends StatefulWidget {
   final Duration confirmInterval;
   final Duration confirmTimeout;
 
-  /// Where the reader hotspot's password is kept once typed (secure storage).
+  /// Where this reader's hotspot password is kept after a successful join
+  /// (encrypted storage), so setup can be restarted without rescanning.
   final HotspotPasswordStore? hotspotPasswords;
 
-  /// Join the hotspot from inside the app as soon as the screen opens, when a
-  /// password is already saved.
+  /// Setup hotspot name from the QR code; defaults to NAADH-Setup.
+  final String? hotspotSsid;
+
+  /// Setup hotspot password from the QR code. Used only to join the hotspot;
+  /// never shown, logged, or asked for.
+  final String? hotspotPassword;
+
+  /// Join the hotspot as soon as the screen opens, when its password is known
+  /// (from the QR code, or saved for this reader).
   final bool autoJoin;
 
   /// How long Android may take, including the person answering its prompt.
@@ -137,12 +147,19 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
   bool _joining = false;
   bool _hotspotJoined = false;
 
+  /// The hotspot password for this reader, from the QR code or storage.
+  String? _knownPassword;
+
+  String get _hotspotName => (widget.hotspotSsid?.isNotEmpty ?? false)
+      ? widget.hotspotSsid!
+      : PairingConfig.hotspotName;
+
   @override
   void initState() {
     super.initState();
     if (widget.autoJoin) {
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _joinWithSavedPassword(),
+        (_) => _loadPasswordAndJoin(),
       );
     }
   }
@@ -169,34 +186,34 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
 
   // ─── Joining the hotspot from the app ─────────────────────────────
 
-  Future<void> _joinWithSavedPassword() async {
-    final saved = await _passwords.read();
-    if (saved == null || !mounted || _step != _Step.joinHotspot) return;
-    await _joinAutomatically(saved, fromSaved: true);
+  Future<void> _loadPasswordAndJoin() async {
+    final fromQr = widget.hotspotPassword;
+    final password = (fromQr != null && fromQr.isNotEmpty)
+        ? fromQr
+        : await _passwords.read(widget.deviceId);
+    if (!mounted) return;
+    setState(() => _knownPassword = password);
+    if (password == null || _step != _Step.joinHotspot) return;
+    await _joinAutomatically();
   }
 
-  Future<void> _connectAutomaticallyPressed() async {
-    final password = await _askHotspotPassword(await _passwords.read());
-    if (password == null || !mounted) return;
-    await _joinAutomatically(password, fromSaved: false);
-  }
-
-  Future<void> _joinAutomatically(
-    String password, {
-    required bool fromSaved,
-  }) async {
+  /// Joins the hotspot with the known password. The person is never asked
+  /// for it; without one, only the manual steps are offered.
+  Future<void> _joinAutomatically() async {
+    final password = _knownPassword;
+    if (password == null) return;
     setState(() {
       _joining = true;
       _error = null;
     });
     final result = await widget.binding.joinHotspot(
-      ssid: PairingConfig.hotspotName,
+      ssid: _hotspotName,
       passphrase: password,
       timeout: widget.joinTimeout,
     );
     if (!mounted) return;
     if (result == HotspotJoin.connected) {
-      await _passwords.save(password);
+      await _passwords.save(widget.deviceId, password);
       _hotspotJoined = true;
       _address.text = PairingConfig.defaultBaseUrl;
       setState(() => _joining = false);
@@ -205,13 +222,12 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     }
     setState(() {
       _joining = false;
-      _error = _joinFailureMessage(result, fromSaved: fromSaved);
+      _error = _joinFailureMessage(result);
     });
   }
 
-  String _joinFailureMessage(HotspotJoin result, {required bool fromSaved}) {
-    const name = PairingConfig.hotspotName;
-    final which = fromSaved ? 'saved ' : '';
+  String _joinFailureMessage(HotspotJoin result) {
+    final name = _hotspotName;
     return switch (result) {
       HotspotJoin.permissionDenied =>
         'Naadh needs the Wi-Fi permission to join $name for you. You can '
@@ -221,69 +237,13 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
             'settings instead (steps below).',
       HotspotJoin.unavailable =>
         "Couldn't join $name automatically. The prompt may have been "
-            'declined, the reader may not be in setup mode, or the '
-            '${which}password may be wrong. Try again, or join it in Wi-Fi '
-            'settings (steps below).',
+            'declined, or the reader may not be in setup mode. Make sure it '
+            'is on and waiting for setup, then try again, or join it in '
+            'Wi-Fi settings (steps below).',
       _ =>
         'Something went wrong joining $name. Try again, or join it in Wi-Fi '
             'settings (steps below).',
     };
-  }
-
-  /// Asks for the hotspot's Wi-Fi password. Null when cancelled.
-  Future<String?> _askHotspotPassword(String? current) async {
-    final controller = TextEditingController(text: current ?? '');
-    var show = false;
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Reader Wi-Fi password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'The password of the ${PairingConfig.hotspotName} network. '
-                'It is kept encrypted on this phone so Naadh can join it for '
-                'you next time.',
-              ),
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: controller,
-                obscureText: !show,
-                autocorrect: false,
-                enableSuggestions: false,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  suffixIcon: IconButton(
-                    tooltip: show ? 'Hide password' : 'Show password',
-                    icon: Icon(
-                      show
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                    ),
-                    onPressed: () => setDialog(() => show = !show),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, controller.text),
-              child: const Text('Connect'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (result == null || result.isEmpty) return null;
-    return result;
   }
 
   String? _normalizedAddress() => PairingConfig.normalizeAddress(_address.text);
@@ -841,35 +801,37 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Joining ${PairingConfig.hotspotName}… Approve the '
-                    'Android prompt to connect.',
+                    'Joining $_hotspotName… Approve the Android prompt to '
+                    'connect.',
                   ),
                 ),
               ],
             ),
           )
-        else ...[
+        else if (_knownPassword != null) ...[
           _primaryButton(
             label: 'Connect automatically',
             icon: Icons.wifi_rounded,
-            onPressed: _busy ? null : _connectAutomaticallyPressed,
+            onPressed: _busy ? null : _joinAutomatically,
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Android will ask you to confirm joining '
-            '${PairingConfig.hotspotName}. You stay in Naadh.',
+            '$_hotspotName. You stay in Naadh.',
             textAlign: TextAlign.center,
             style: TextStyle(color: context.mutedText, fontSize: 12.5),
           ),
         ],
         const SizedBox(height: AppSpacing.lg),
         _Instructions(
-          title: 'Or join it by hand',
-          steps: const [
+          title: _knownPassword != null
+              ? 'Or join it by hand'
+              : "Join the reader's Wi-Fi",
+          steps: [
             'Open your phone\'s Wi-Fi settings.',
-            'Join the network named ${PairingConfig.hotspotName}.',
+            'Join the network named $_hotspotName.',
             'If Android says it has no internet, choose to stay connected.',
             'Come back to Naadh and tap Continue.',
           ],

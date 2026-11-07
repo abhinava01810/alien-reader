@@ -51,10 +51,9 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                 height: AppSpacing.buttonHeight,
                 child: FilledButton.icon(
                   onPressed: () {
-                    Navigator.of(context).pushNamed(
-                      AppRoutes.devicePairing,
-                      arguments: payload.deviceId,
-                    );
+                    Navigator.of(
+                      context,
+                    ).pushNamed(AppRoutes.devicePairing, arguments: payload);
                   },
                   icon: const Icon(Icons.wifi_rounded),
                   label: const Text('CONFIGURE WI-FI'),
