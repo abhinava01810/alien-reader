@@ -230,8 +230,11 @@ class _AppShellState extends State<AppShell> {
 
     try {
       await _device.startSession(_userName!);
-      // A new reader session restarts page numbers and drops older jobs.
+      // A new reader session restarts page numbers and drops older jobs, so
+      // pages counted in an earlier session are no longer on the reader.
       _readerPageInFlight = null;
+      _pageCount = 0;
+      if (mounted) setState(() {});
 
       await _sessionStorage.saveSession(
         userName: _userName!,

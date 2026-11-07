@@ -507,6 +507,9 @@ void main() {
       await _setPhoneMode(false, r);
       await _startApp(t, r);
       await _connect(t, r);
+      r['home_read_label_after_connect'] = _textsUnder(
+        find.byType(HomeScreen),
+      ).where((s) => s.startsWith('Read ')).toList();
       final c = await _captureOnce(t, expectPhone: false);
       r['capture'] = c;
       if (c['landed'] != 'Output tab') fail('Capture did not finish');
@@ -560,33 +563,55 @@ void main() {
             File(saved.originalPdfPath!).existsSync(),
       };
 
-      // What the detail screen's "Read" button does.
-      final read = find.descendant(
+      // What the detail screen's "Read" buttons play. The host logs which
+      // app is making sound between the E2E_READ markers.
+      final reads = find.descendant(
         of: find.byType(SavedDocumentDetailScreen),
         matching: find.text('Read'),
       );
-      if (_has(read)) {
-        await t.tap(read.first);
-        r['detail_read_button_becomes_stop'] = await _waitFor(
+      Future<bool> readFor(String label, Finder button) async {
+        await t.ensureVisible(button);
+        // ignore: avoid_print
+        print('E2E_READ_START $label ${DateTime.now().toIso8601String()}');
+        await t.tap(button);
+        final stop = find.descendant(
+          of: find.byType(SavedDocumentDetailScreen),
+          matching: find.text('Stop'),
+        );
+        final started = await _waitFor(
           t,
-          () => _has(
-            find.descendant(
-              of: find.byType(SavedDocumentDetailScreen),
-              matching: find.text('Stop'),
-            ),
-          ),
+          () => _has(stop),
           timeout: const Duration(seconds: 6),
         );
-        if (_has(find.text('Stop'))) await t.tap(find.text('Stop').first);
+        await _idle(t, const Duration(seconds: 5));
+        // ignore: avoid_print
+        print('E2E_READ_END $label ${DateTime.now().toIso8601String()}');
+        if (_has(stop)) await t.tap(stop.first);
+        await _idle(t, const Duration(seconds: 1));
+        return started;
       }
+
+      r['read_original_started'] = await readFor('original', reads.first);
+      // Summary: remove its saved audio first, so Read has to fall back to
+      // the phone's voice. (This is the test's own document.)
+      final summaryAudio = saved.summaryAudioPath;
+      if (summaryAudio != null && File(summaryAudio).existsSync()) {
+        File(summaryAudio).deleteSync();
+        r['summary_audio_removed_for_fallback'] = true;
+      }
+      r['read_summary_started'] = await readFor(
+        'summary_fallback',
+        find
+            .descendant(
+              of: find.byType(SavedDocumentDetailScreen),
+              matching: find.text('Read'),
+            )
+            .last,
+      );
       // The saved audio files themselves, played directly.
       r['saved_original_audio_plays'] = await _playFile(
         t,
         saved.originalAudioPath,
-      );
-      r['saved_summary_audio_plays'] = await _playFile(
-        t,
-        saved.summaryAudioPath,
       );
       _report('files', r);
       final orig = r['saved_original_audio_plays']! as Map;

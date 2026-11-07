@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,6 +28,44 @@ class DocumentStorageService {
   final PdfService _pdf;
 
   static const String _prefsKey = 'alien_reader_saved_documents';
+
+  /// Number of the last scan saved on this phone. Never reset, so every
+  /// title is different even though the reader restarts page numbers each
+  /// session.
+  static const String _scanCounterKey = 'alien_reader_scan_counter';
+
+  /// Next number for [scanTitle]. Starts after the documents already saved.
+  @visibleForTesting
+  Future<int> nextScanNumber() async {
+    final prefs = await SharedPreferences.getInstance();
+    final last =
+        prefs.getInt(_scanCounterKey) ?? (await loadAllDocuments()).length;
+    final next = last + 1;
+    await prefs.setInt(_scanCounterKey, next);
+    return next;
+  }
+
+  /// "Scan 12, 8 Nov 2026 at 00:03": short, unique, and reads clearly in a
+  /// screen reader.
+  static String scanTitle(int number, DateTime at) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    String two(int v) => v.toString().padLeft(2, '0');
+    return 'Scan $number, ${at.day} ${months[at.month - 1]} ${at.year} '
+        'at ${two(at.hour)}:${two(at.minute)}';
+  }
 
   // ─── Root directory ───────────────────────────────────────────────
 
@@ -63,11 +102,7 @@ class DocumentStorageService {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final dir = await _docDir(id);
     final now = DateTime.now();
-    final title =
-        documentTitle ??
-        (pageNumber != null
-            ? 'Scan Page $pageNumber'
-            : 'Scan ${_shortDate(now)}');
+    final title = documentTitle ?? scanTitle(await nextScanNumber(), now);
 
     // ── Download captured image ───────────────────────────────────
     String? imagePath;
@@ -336,23 +371,5 @@ class DocumentStorageService {
     final file = File(path);
     await file.parent.create(recursive: true);
     await file.writeAsString(text, encoding: utf8);
-  }
-
-  String _shortDate(DateTime dt) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${dt.day}_${months[dt.month - 1]}_${dt.year}';
   }
 }

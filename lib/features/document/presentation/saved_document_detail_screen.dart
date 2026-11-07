@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -11,6 +13,19 @@ import '../../../shared/widgets/app_card.dart';
 import '../data/models/saved_document.dart';
 import '../data/services/document_share_service.dart';
 import '../data/services/document_storage_service.dart';
+
+/// The saved audio file for [section] ('original' or 'summary'), or null
+/// when it is missing or empty and the text has to be spoken instead.
+String? savedAudioPathFor(SavedDocument doc, String section) {
+  final path = section == 'original'
+      ? doc.originalAudioPath
+      : doc.summaryAudioPath;
+  if (path == null || path.isEmpty) return null;
+  final file = File(path);
+  // A WAV header alone (44 bytes) has no sound in it.
+  if (!file.existsSync() || file.lengthSync() <= 44) return null;
+  return path;
+}
 
 /// Detail view for a locally saved [SavedDocument].
 ///
@@ -30,6 +45,8 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
   final _storage = DocumentStorageService();
   final _share = DocumentShareService();
   late final FlutterTts _tts;
+  AudioPlayer? _player;
+  StreamSubscription<void>? _playerDone;
   String? _activeSection;
 
   @override
@@ -57,20 +74,51 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
   @override
   void dispose() {
     _tts.stop();
+    _playerDone?.cancel();
+    _player?.dispose();
     super.dispose();
   }
 
   // ─── TTS ──────────────────────────────────────────────────────────
 
+  /// Plays the section's saved audio. Speaks the text with the phone's
+  /// voice only when that file is missing or will not play.
   Future<void> _toggleSpeak(String text, String section) async {
-    if (_activeSection == section) {
-      await _tts.stop();
-      setState(() => _activeSection = null);
+    final wasActive = _activeSection == section;
+    await _stopReading();
+    if (wasActive) {
+      if (mounted) setState(() => _activeSection = null);
       return;
     }
-    await _tts.stop();
+    if (!mounted) return;
     setState(() => _activeSection = section);
+
+    final path = savedAudioPathFor(widget.document, section);
+    if (path != null) {
+      try {
+        final player = _player ??= _createPlayer();
+        await player.play(DeviceFileSource(path));
+        return;
+      } catch (_) {
+        // Fall back to speaking the text below.
+      }
+    }
     await _tts.speak(text);
+  }
+
+  AudioPlayer _createPlayer() {
+    final player = AudioPlayer();
+    _playerDone = player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _activeSection = null);
+    });
+    return player;
+  }
+
+  Future<void> _stopReading() async {
+    await _tts.stop();
+    try {
+      await _player?.stop();
+    } catch (_) {}
   }
 
   // ─── Share ────────────────────────────────────────────────────────
