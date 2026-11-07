@@ -292,8 +292,14 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
         }
       }
 
-      // 2. Download to temporary file without creating a SavedDocument
+      // 2. Already a local file (processed on the phone): share it directly.
       final uri = Uri.parse(audioUrl);
+      if (uri.scheme == 'file') {
+        await _share.shareFile(File.fromUri(uri), subject: 'Naadh Audio');
+        return;
+      }
+
+      // 3. Download to temporary file without creating a SavedDocument
       final response = await http.get(uri).timeout(const Duration(seconds: 30));
       if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}');
@@ -580,8 +586,12 @@ class _CapturedImageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasLocalImage =
-        localImagePath != null && File(localImagePath!).existsSync();
+    final localPath =
+        localImagePath ??
+        (imageUrl.startsWith('file://')
+            ? File.fromUri(Uri.parse(imageUrl)).path
+            : null);
+    final hasLocalImage = localPath != null && File(localPath).existsSync();
 
     return AppCard(
       child: Column(
@@ -596,7 +606,7 @@ class _CapturedImageCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppShapes.cardRadius),
             child: hasLocalImage
                 ? Image.file(
-                    File(localImagePath!),
+                    File(localPath),
                     fit: BoxFit.contain,
                     width: double.infinity,
                   )

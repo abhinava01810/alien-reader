@@ -35,12 +35,14 @@ class ProcessingArgs {
   final int pageNumber;
   final String? imageUrl;
   final Stream<String>? statusStream;
+  final bool onPhone;
 
   const ProcessingArgs({
     required this.onProcess,
     this.pageNumber = 1,
     this.imageUrl,
     this.statusStream,
+    this.onPhone = false,
   });
 }
 
@@ -62,6 +64,7 @@ abstract final class AppRouter {
               pageNumber: args.pageNumber,
               imageUrl: args.imageUrl,
               statusStream: args.statusStream,
+              onPhone: args.onPhone,
             ),
             settings: settings,
           );

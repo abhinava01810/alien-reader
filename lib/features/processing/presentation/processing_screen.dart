@@ -17,6 +17,7 @@ class ProcessingScreen extends StatefulWidget {
     this.pageNumber = 1,
     this.imageUrl,
     this.statusStream,
+    this.onPhone = false,
   });
 
   final VoidCallback? onCompleted;
@@ -24,6 +25,9 @@ class ProcessingScreen extends StatefulWidget {
   final int pageNumber;
   final String? imageUrl;
   final Stream<String>? statusStream;
+
+  /// True when OCR, summary and audio run on the phone instead of the Pi.
+  final bool onPhone;
 
   @override
   State<ProcessingScreen> createState() => _ProcessingScreenState();
@@ -283,6 +287,20 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   }
 
   String _statusSubtitle() {
+    if (widget.onPhone) {
+      switch (_piStatus) {
+        case _PiStatus.capturing:
+          return 'Getting the photo from your reader...';
+        case _PiStatus.queued:
+          return 'Reading the text on your phone...';
+        case _PiStatus.processing:
+          return 'Summarising and creating audio on your phone...';
+        case _PiStatus.ready:
+          return 'Processing complete — saving to phone...';
+        case _PiStatus.failed:
+          return 'Processing failed';
+      }
+    }
     switch (_piStatus) {
       case _PiStatus.capturing:
         return 'Triggering camera on Raspberry Pi...';
@@ -300,7 +318,10 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   List<Widget> _buildSteps() {
     final steps = <(String, int)>[
       ('Camera triggered', _PiStatus.queued.index),
-      ('Image captured', _PiStatus.processing.index),
+      (
+        widget.onPhone ? 'Image received on phone' : 'Image captured',
+        _PiStatus.processing.index,
+      ),
       ('OCR text extracted', _PiStatus.ready.index),
       ('AI summary generated', _PiStatus.ready.index),
       ('Audio files generated', _PiStatus.ready.index),

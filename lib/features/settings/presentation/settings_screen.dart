@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../device/domain/reader_device.dart';
+import '../../phone_processing/presentation/phone_processing_card.dart';
 
 /// Reader, scanning, audio and about settings.
 ///
@@ -126,6 +127,8 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: AppSpacing.md),
+              const PhoneProcessingCard(),
               const SizedBox(height: AppSpacing.md),
               const _SettingsCard(
                 title: 'Audio',

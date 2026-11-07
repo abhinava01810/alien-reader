@@ -46,9 +46,13 @@ dependencies:
   audioplayers: ^6.0.0
   mobile_scanner: ^7.4.2
   flutter_secure_storage: ^10.3.4
+  google_mlkit_text_recognition: ^1.0.1
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to

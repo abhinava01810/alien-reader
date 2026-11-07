@@ -314,6 +314,13 @@ class DocumentStorageService {
   }
 
   Future<void> _downloadFile(String url, String destPath) async {
+    // Phone-processed captures are already on the phone: copy, don't fetch.
+    if (url.startsWith('file://')) {
+      final src = File.fromUri(Uri.parse(url));
+      await File(destPath).parent.create(recursive: true);
+      await src.copy(destPath);
+      return;
+    }
     final response = await http
         .get(Uri.parse(url))
         .timeout(const Duration(seconds: 30));

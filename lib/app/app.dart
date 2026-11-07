@@ -19,6 +19,8 @@ import '../features/document/data/services/document_storage_service.dart';
 import '../features/files/presentation/files_screen.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/output/presentation/output_screen.dart';
+import '../features/phone_processing/data/phone_document_processor.dart';
+import '../features/phone_processing/data/phone_processing_settings.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/session/data/session_storage.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -88,6 +90,8 @@ class _AppShellState extends State<AppShell> {
   final RaspberryPiDevice _device = RaspberryPiDevice();
   final SessionStorage _sessionStorage = SessionStorage();
   final DocumentStorageService _storageService = DocumentStorageService();
+  final PhoneProcessingSettings _phoneSettings = PhoneProcessingSettings();
+  PhoneDocumentProcessor? _phoneProcessor;
 
   late final StreamSubscription<ReaderConnectionStatus> _statusSub;
 
@@ -189,6 +193,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _statusSub.cancel();
+    _phoneProcessor?.close();
     _sessionExpiredSub?.cancel();
     _deviceChangeSub?.cancel();
     _device.dispose();
@@ -308,6 +313,22 @@ class _AppShellState extends State<AppShell> {
         ? _device.getFullUrl(imageRelUrl)
         : null;
 
+    // Settings → "Process on phone": OCR, summary and audio for this
+    // app-triggered capture run on the phone. Off by default.
+    final phoneKey = fullImageUrl == null
+        ? null
+        : await _phoneSettings.readyKey();
+    if (phoneKey != null) {
+      await _processOnPhone(
+        navigator: navigator,
+        statusCtrl: statusCtrl,
+        imageUrl: fullImageUrl!,
+        pageNumber: pageNumber,
+        geminiKey: phoneKey,
+      );
+      return;
+    }
+
     // Step 2: Navigate immediately to ProcessingScreen with image + status stream.
     await navigator.pushNamed(
       AppRoutes.processing,
@@ -412,7 +433,88 @@ class _AppShellState extends State<AppShell> {
       originalAudioUrl: fullOriginalAudioUrl,
       summaryAudioUrl: fullSummaryAudioUrl,
     );
+    await _saveOutputAndShowResults(output, pageNumber);
+  }
 
+  /// App-mode capture processed on the phone: fetch the photo, OCR, Gemini
+  /// summary and TTS audio all happen here; the Pi only took the picture.
+  Future<void> _processOnPhone({
+    required NavigatorState navigator,
+    required StreamController<String> statusCtrl,
+    required String imageUrl,
+    required int pageNumber,
+    required String geminiKey,
+  }) async {
+    await navigator.pushNamed(
+      AppRoutes.processing,
+      arguments: ProcessingArgs(
+        pageNumber: pageNumber,
+        imageUrl: imageUrl,
+        statusStream: statusCtrl.stream,
+        onPhone: true,
+        onProcess: () async {
+          try {
+            final result = await (_phoneProcessor ??= PhoneDocumentProcessor())
+                .process(
+                  imageUrl: imageUrl,
+                  pageNumber: pageNumber,
+                  geminiKey: geminiKey,
+                  onStatus: (status) {
+                    if (!statusCtrl.isClosed) statusCtrl.add(status);
+                  },
+                );
+            if (!mounted) return;
+            setState(() {
+              _pageCount = pageNumber;
+              _status = ReaderConnectionStatus.connected;
+            });
+            await _sessionStorage.savePageCount(pageNumber);
+            await _saveOutputAndShowResults(
+              DocumentOutput(
+                originalText: result.text,
+                summaryText: result.summary,
+                imageUrl: Uri.file(result.imagePath).toString(),
+                originalAudioUrl: Uri.file(result.originalAudioPath).toString(),
+                summaryAudioUrl: Uri.file(result.summaryAudioPath).toString(),
+              ),
+              pageNumber,
+            );
+          } on OcrFailureException catch (e) {
+            if (mounted) {
+              setState(() {
+                _ocrFailureMessage = e.message;
+                _status = ReaderConnectionStatus.connected;
+              });
+            }
+            rethrow;
+          } catch (e) {
+            if (mounted) {
+              setState(() => _status = ReaderConnectionStatus.connected);
+            }
+            rethrow;
+          } finally {
+            if (mounted) setState(() => _isCapturing = false);
+            await statusCtrl.close();
+          }
+        },
+      ),
+    );
+
+    if (!statusCtrl.isClosed) await statusCtrl.close();
+    if (mounted) {
+      setState(() {
+        _isCapturing = false;
+        if (_status == ReaderConnectionStatus.busy) {
+          _status = ReaderConnectionStatus.connected;
+        }
+      });
+    }
+  }
+
+  Future<void> _saveOutputAndShowResults(
+    DocumentOutput output,
+    int pageNumber,
+  ) async {
     // Auto-save captured document locally to persistent phone storage
     SavedDocument? savedDoc;
     try {

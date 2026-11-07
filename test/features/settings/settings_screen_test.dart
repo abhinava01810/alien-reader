@@ -25,11 +25,12 @@ void main() {
     expect(headers.map((h) => h.title), [
       'Reader',
       'Scanning',
+      'Processing',
       'Audio',
       'About',
     ]);
     expect(headers.every((h) => h.icon != null), isTrue);
-    expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(8));
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(9));
 
     expect(find.text('Add Device (QR Setup)'), findsNothing);
     expect(find.text('Device Information'), findsNothing);
