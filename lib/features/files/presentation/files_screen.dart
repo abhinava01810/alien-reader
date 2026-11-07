@@ -76,7 +76,8 @@ class _FilesScreenState extends State<FilesScreen> {
   // ─── Load session captures ────────────────────────────────────────
 
   Future<void> _loadSessionCaptures() async {
-    if (widget.device == null) {
+    final device = widget.device;
+    if (device == null) {
       setState(
         () => _sessionError = 'Not connected to a Raspberry Pi session.',
       );
@@ -87,7 +88,7 @@ class _FilesScreenState extends State<FilesScreen> {
       _sessionError = null;
     });
     try {
-      final list = await widget.device!.getCaptureList();
+      final list = await device.getCaptureList();
       if (mounted) {
         setState(() {
           _sessionCaptures = list;
@@ -143,7 +144,10 @@ class _FilesScreenState extends State<FilesScreen> {
   }
 
   Future<void> _openSessionCapture(int pageNumber) async {
-    if (widget.device == null) return;
+    // Hold the device locally: the widget's device can become null (reader
+    // disconnected) while the awaits below are pending.
+    final device = widget.device;
+    if (device == null) return;
 
     // Check if capture is already locally saved
     final existingDoc = await _storageService.findByPageNumber(pageNumber);
@@ -174,7 +178,7 @@ class _FilesScreenState extends State<FilesScreen> {
     );
 
     try {
-      final details = await widget.device!.getCaptureDetails(pageNumber);
+      final details = await device.getCaptureDetails(pageNumber);
       if (!mounted) return;
       Navigator.of(context).pop();
 
@@ -196,7 +200,9 @@ class _FilesScreenState extends State<FilesScreen> {
         summaryText: summaryText.isNotEmpty
             ? summaryText
             : 'No summary available.',
-        imageUrl: widget.device!.getFullUrl(imageRawUrl),
+        imageUrl: (imageRawUrl != null && imageRawUrl.isNotEmpty)
+            ? device.getFullUrl(imageRawUrl)
+            : null,
         originalAudioUrl:
             '${PiConfig.baseUrl}/capture/$pageNumber/audio/original',
         summaryAudioUrl:
