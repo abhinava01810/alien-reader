@@ -13,6 +13,8 @@ import '../core/theme/theme_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/device/data/device_events.dart';
 import '../features/device/data/raspberry_pi_device.dart';
+import '../features/device/data/services/device_storage_service.dart';
+import '../features/device/data/services/pi_api_service.dart';
 import '../features/device/domain/reader_device.dart';
 import '../features/document/data/models/saved_document.dart';
 import '../features/document/data/services/document_storage_service.dart';
@@ -79,7 +81,7 @@ class AppShell extends StatefulWidget {
 /// Whether the cloud session is still being checked, valid, or absent.
 enum _CloudAuthState { checking, signedIn, signedOut }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late final CloudAuthService _cloudAuth =
       widget.cloudAuth ?? CloudAuthService();
   StreamSubscription<void>? _sessionExpiredSub;
@@ -118,6 +120,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _statusSub = _device.status.listen((status) {
       if (mounted) {
@@ -199,6 +202,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _statusSub.cancel();
     _phoneProcessor?.close();
     _sessionExpiredSub?.cancel();
@@ -242,6 +246,10 @@ class _AppShellState extends State<AppShell> {
         pageCount: _pageCount,
       );
 
+      // Home keeps showing this reader (with Reconnect) from now on, even
+      // if it was never paired by QR on this phone.
+      await DeviceStorageService().markReaderConnected();
+
       if (!mounted) return;
 
       setState(() {
@@ -272,6 +280,42 @@ class _AppShellState extends State<AppShell> {
         });
       }
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkReaderAfterResume();
+  }
+
+  /// After the app comes back to the foreground, asks the reader whether
+  /// this app's session is still the active one. If the reader restarted,
+  /// ended the session or cannot be reached, Home shows Disconnected with
+  /// Reconnect instead of a stale "Connected".
+  Future<void> _checkReaderAfterResume() async {
+    if (_status != ReaderConnectionStatus.connected ||
+        _isCapturing ||
+        _isConnecting) {
+      return;
+    }
+    final ourSession = _device.sessionId;
+    String? lost;
+    try {
+      final data = await PiApiService().getStatus();
+      if (data['status'] != 'APP_ACTIVE') {
+        lost = 'The reader ended this session.';
+      } else if (ourSession != null && data['session_id'] != ourSession) {
+        lost = 'The reader is in another session.';
+      }
+    } catch (_) {
+      lost = "Couldn't reach the reader.";
+    }
+    if (lost == null || !mounted) return;
+    // Only if nothing changed while the reader was being asked.
+    if (_status != ReaderConnectionStatus.connected || _isCapturing) return;
+    setState(() => _status = ReaderConnectionStatus.disconnected);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$lost Tap Reconnect to continue.')),
+    );
   }
 
   Future<void> _capture() async {

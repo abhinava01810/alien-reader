@@ -247,4 +247,70 @@ void main() {
       expect(opened, isTrue);
     });
   });
+
+  group('Home follows the live reader connection', () {
+    Widget home(ReaderConnectionStatus status) => MaterialApp(
+      home: Scaffold(
+        body: HomeScreen(
+          status: status,
+          onConnect: () {},
+          onCapture: () {},
+          onFinish: () {},
+          pageCount: 0,
+        ),
+      ),
+    );
+
+    testWidgets('connected with no saved reader shows the reader, not setup', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(home(ReaderConnectionStatus.connected));
+      await tester.pumpAndSettle();
+      expect(find.text('Set up your Naadh reader'), findsNothing);
+      expect(find.text('Connected'), findsOneWidget);
+      expect(find.text('Capture page'), findsOneWidget);
+    });
+
+    testWidgets('switches from setup to connected the moment it connects', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(home(ReaderConnectionStatus.disconnected));
+      await tester.pumpAndSettle();
+      expect(find.text('Set up your Naadh reader'), findsOneWidget);
+
+      await tester.pumpWidget(home(ReaderConnectionStatus.connecting));
+      await tester.pump();
+      expect(find.text('Set up your Naadh reader'), findsNothing);
+      expect(find.text('Connecting...'), findsOneWidget);
+
+      await tester.pumpWidget(home(ReaderConnectionStatus.connected));
+      await tester.pump();
+      expect(find.text('Connected'), findsOneWidget);
+    });
+
+    testWidgets('after a disconnect it offers Reconnect, not setup', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(home(ReaderConnectionStatus.connected));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(home(ReaderConnectionStatus.disconnected));
+      await tester.pump();
+      expect(find.text('Set up your Naadh reader'), findsNothing);
+      expect(find.text('Reconnect'), findsOneWidget);
+    });
+
+    testWidgets('a reader that connected before is remembered after restart', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await DeviceStorageService().markReaderConnected();
+      await tester.pumpWidget(home(ReaderConnectionStatus.disconnected));
+      await tester.pumpAndSettle();
+      expect(find.text('Set up your Naadh reader'), findsNothing);
+      expect(find.text('Reconnect'), findsOneWidget);
+    });
+  });
 }

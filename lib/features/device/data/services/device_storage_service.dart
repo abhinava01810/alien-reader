@@ -11,6 +11,22 @@ import '../models/saved_device.dart';
 class DeviceStorageService {
   static const _devicesKey = 'alien_reader_saved_devices';
   static const _activeDeviceIdKey = 'alien_reader_active_device_id';
+  static const _readerConnectedBeforeKey = 'alien_reader_connected_before';
+
+  /// Records that this phone has had a live session with a reader, so Home
+  /// keeps showing the reader (with Reconnect) instead of first-time setup.
+  /// Covers readers that were connected without going through QR pairing.
+  Future<void> markReaderConnected() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_readerConnectedBeforeKey, true);
+  }
+
+  /// True if a reader was paired or has ever connected on this phone.
+  Future<bool> hasKnownReader() async {
+    if ((await getAllDevices()).isNotEmpty) return true;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_readerConnectedBeforeKey) ?? false;
+  }
 
   Future<List<SavedDevice>> getAllDevices() async {
     final prefs = await SharedPreferences.getInstance();

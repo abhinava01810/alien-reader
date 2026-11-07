@@ -76,15 +76,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadHasDevice() async {
-    final devices = await (widget.deviceStorage ?? DeviceStorageService())
-        .getAllDevices();
+    final known = await (widget.deviceStorage ?? DeviceStorageService())
+        .hasKnownReader();
     if (!mounted) return;
-    setState(() => _hasDevice = devices.isNotEmpty);
+    // A live connection that arrived while this was loading wins.
+    setState(() => _hasDevice = known || _isLive(widget.status));
   }
+
+  static bool _isLive(ReaderConnectionStatus s) =>
+      s != ReaderConnectionStatus.disconnected;
 
   @override
   void didUpdateWidget(covariant HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // The live connection decides: once the app is connecting to or
+    // connected to a reader, Home shows that reader, saved or not.
+    if (_isLive(widget.status) && _hasDevice != true) {
+      _hasDevice = true;
+    }
 
     if (widget.pageCount <= _selectedPageIndex) {
       _selectedPageIndex = widget.pageCount > 0 ? widget.pageCount - 1 : 0;
@@ -240,15 +250,16 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.status == ReaderConnectionStatus.connected ||
         widget.status == ReaderConnectionStatus.busy;
 
-    // Nothing to render until the saved-device lookup resolves.
-    if (_hasDevice == null) {
+    // Nothing to render until the saved-device lookup resolves, unless the
+    // live connection already says there is a reader.
+    if (_hasDevice == null && !_isLive(widget.status)) {
       return const Center(child: CircularProgressIndicator());
     }
 
     return ListView(
       padding: EdgeInsets.symmetric(horizontal: pad, vertical: 12),
       children: [
-        if (_hasDevice == false) ...[
+        if (_hasDevice == false && !_isLive(widget.status)) ...[
           _buildFirstRunSetupCard(context, isDark),
         ] else ...[
           _buildDeviceStatusBar(context, isDark),
