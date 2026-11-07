@@ -104,6 +104,10 @@ class _AppShellState extends State<AppShell> {
 
   int _pageCount = 0;
 
+  /// The last page this app captured on the reader, until the reader reports
+  /// it READY or FAILED. The next capture waits for that.
+  int? _readerPageInFlight;
+
   bool _isLoadingSession = true;
   bool _isCapturing = false;
   bool _isConnecting = false;
@@ -226,6 +230,8 @@ class _AppShellState extends State<AppShell> {
 
     try {
       await _device.startSession(_userName!);
+      // A new reader session restarts page numbers and drops older jobs.
+      _readerPageInFlight = null;
 
       await _sessionStorage.saveSession(
         userName: _userName!,
@@ -284,6 +290,26 @@ class _AppShellState extends State<AppShell> {
       _ocrFailureMessage = null;
     });
 
+    // One page at a time on the reader: never trigger the next capture until
+    // the reader reports the previous page fully processed.
+    if (!await _waitForReaderToFinishPreviousPage()) {
+      if (!mounted) return;
+      setState(() {
+        _isCapturing = false;
+        _status = ReaderConnectionStatus.connected;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'The reader is still working on page $_readerPageInFlight. '
+            'Try again in a moment.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+
     final targetPageNumber = _pageCount + 1;
     final navigator = Navigator.of(context);
 
@@ -311,6 +337,7 @@ class _AppShellState extends State<AppShell> {
 
     final pageNumber =
         (triggerResult['page_number'] as int?) ?? targetPageNumber;
+    _readerPageInFlight = pageNumber;
     final imageRelUrl = triggerResult['image_url'] as String?;
     final fullImageUrl = (imageRelUrl != null && imageRelUrl.isNotEmpty)
         ? _device.getFullUrl(imageRelUrl)
@@ -401,6 +428,56 @@ class _AppShellState extends State<AppShell> {
         }
       });
     }
+  }
+
+  /// Waits until the reader reports the last page this app captured as
+  /// READY or FAILED, i.e. its OCR, summary and audio are finished.
+  ///
+  /// The reader processes every app capture itself, including when the phone
+  /// does its own processing ("Process on phone"), and it cannot take a new
+  /// capture while busy. Returns false if the page is still not finished
+  /// after [limit]; the caller must not capture then.
+  Future<bool> _waitForReaderToFinishPreviousPage({
+    Duration interval = const Duration(seconds: 2),
+    Duration limit = const Duration(minutes: 6),
+  }) async {
+    final page = _readerPageInFlight;
+    if (page == null) return true;
+
+    final watch = Stopwatch()..start();
+    var missing = 0;
+    var told = false;
+    while (watch.elapsed < limit) {
+      final data = await _device.getCaptureDetails(page);
+      final status = (data?['status'] as String? ?? '').toUpperCase();
+      if (status == 'READY' || status == 'FAILED') {
+        _readerPageInFlight = null;
+        return true;
+      }
+      if (data == null) {
+        // Gone from the reader (new session or restart). A short network
+        // blip also lands here, so require several misses in a row.
+        if (++missing >= 5) {
+          _readerPageInFlight = null;
+          return true;
+        }
+      } else {
+        missing = 0;
+      }
+      if (!told && mounted) {
+        told = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Waiting for the reader to finish page $page before the next '
+              'capture…',
+            ),
+          ),
+        );
+      }
+      await Future<void>.delayed(interval);
+    }
+    return false;
   }
 
   Future<void> _saveAndNavigateToResults(

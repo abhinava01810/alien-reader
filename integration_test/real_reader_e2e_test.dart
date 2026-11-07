@@ -697,4 +697,74 @@ void main() {
       await t.pumpWidget(const SizedBox());
     }
   }, timeout: long);
+
+  testWidgets('next capture waits until the reader has finished the last page', (
+    t,
+  ) async {
+    // Phone mode finishes before the reader does (the reader still processes
+    // every capture), so this is where overlapping captures could happen.
+    final r = <String, Object?>{};
+    String now() => DateTime.now().toIso8601String().substring(11, 23);
+    try {
+      await _setPhoneMode(true, r);
+      await _startApp(t, r);
+      await _connect(t, r);
+      final first = await _captureOnce(t, expectPhone: true);
+      r['page1'] = {'landed': first['landed'], 'error': first['error']};
+      r['page1_phone_done_at'] = now();
+
+      // Back to Home whichever way page 1 ended.
+      if (_has(find.text('Return to Home'))) {
+        await t.tap(find.text('Return to Home'));
+      }
+      await _waitFor(t, () => !_has(find.byType(ProcessingScreen)));
+      await _idle(t, const Duration(milliseconds: 600));
+      if (_currentTab(t) != MainTab.home) await _openTab(t, 'Home');
+      await _waitFor(t, () => _has(_inHome(find.text('Connected'))));
+
+      final capture = _inHome(find.text('Capture page'));
+      await t.ensureVisible(capture);
+      r['page2_tapped_at'] = now();
+      await t.tap(capture);
+      String? waitingShownAt;
+      String? page2ProcessingAt;
+      await _waitFor(t, () {
+        if (waitingShownAt == null &&
+            _snackText().contains('Waiting for the reader to finish page')) {
+          waitingShownAt = now();
+        }
+        final processing = find.byType(ProcessingScreen);
+        if (_has(processing) &&
+            t.widget<ProcessingScreen>(processing).pageNumber >= 2) {
+          page2ProcessingAt = now();
+          return true;
+        }
+        return _snackText().contains('still working on page');
+      }, timeout: const Duration(minutes: 7));
+      r['waiting_message_shown_at'] = waitingShownAt;
+      r['page2_processing_shown_at'] = page2ProcessingAt;
+      r['gave_up'] = _snackText().contains('still working on page');
+      if (page2ProcessingAt != null) {
+        r['page2_number'] = t
+            .widget<ProcessingScreen>(find.byType(ProcessingScreen))
+            .pageNumber;
+        // Let page 2 settle so the test leaves nothing half done.
+        await _waitFor(
+          t,
+          () =>
+              !_has(find.byType(ProcessingScreen)) ||
+              _has(find.text('Return to Home')),
+          timeout: const Duration(minutes: 3),
+        );
+      }
+      _report('sequential', r);
+      expect(page2ProcessingAt, isNotNull, reason: jsonEncode(r));
+    } catch (e) {
+      r['exception'] ??= _short('$e', 600);
+      _report('sequential', r);
+      rethrow;
+    } finally {
+      await t.pumpWidget(const SizedBox());
+    }
+  }, timeout: long);
 }
