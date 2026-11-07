@@ -11,6 +11,7 @@ import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/device/data/device_events.dart';
 import '../features/device/data/raspberry_pi_device.dart';
 import '../features/device/domain/reader_device.dart';
 import '../features/document/data/models/saved_document.dart';
@@ -80,6 +81,7 @@ class _AppShellState extends State<AppShell> {
   late final CloudAuthService _cloudAuth =
       widget.cloudAuth ?? CloudAuthService();
   StreamSubscription<void>? _sessionExpiredSub;
+  StreamSubscription<DeviceChange>? _deviceChangeSub;
   _CloudAuthState _authState = _CloudAuthState.checking;
   CloudUser? _cloudUser;
 
@@ -120,6 +122,14 @@ class _AppShellState extends State<AppShell> {
 
     _loadSavedSession();
     _checkCloudSession();
+
+    // Pairing confirmed the reader on the home network: show Home and
+    // connect, so it is ready to capture.
+    _deviceChangeSub = DeviceEvents.changes.listen((change) {
+      if (!change.readyToConnect || !mounted) return;
+      setState(() => _tab = MainTab.home);
+      _connect();
+    });
   }
 
   /// Routes on stored tokens right away, then confirms them with
@@ -180,6 +190,7 @@ class _AppShellState extends State<AppShell> {
   void dispose() {
     _statusSub.cancel();
     _sessionExpiredSub?.cancel();
+    _deviceChangeSub?.cancel();
     _device.dispose();
     super.dispose();
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
@@ -5,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shapes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/responsive.dart';
+import '../../../features/device/data/device_events.dart';
 import '../../../features/device/data/services/device_storage_service.dart';
 import '../../../features/device/domain/reader_device.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -56,11 +59,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedPageIndex = 0;
   bool? _hasDevice;
+  StreamSubscription<DeviceChange>? _deviceChanges;
 
   @override
   void initState() {
     super.initState();
     _loadHasDevice();
+    // Home stays alive in the tab stack, so reload when pairing saves a reader.
+    _deviceChanges = DeviceEvents.changes.listen((_) => _loadHasDevice());
+  }
+
+  @override
+  void dispose() {
+    _deviceChanges?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadHasDevice() async {

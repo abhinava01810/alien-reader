@@ -8,13 +8,27 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_dialogs.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../data/device_events.dart';
 import '../../data/models/provisioning_models.dart';
 import '../../data/models/saved_device.dart';
 import '../../data/services/device_storage_service.dart';
 import '../../data/services/network_binding.dart';
+import '../../data/services/pi_api_service.dart';
 import '../../data/services/setup_pairing_service.dart';
 
-enum _Step { joinHotspot, waiting, networks, password, sending, done, failed }
+enum _Step {
+  joinHotspot,
+  waiting,
+  networks,
+  password,
+  sending,
+  confirming,
+  confirmFailed,
+  failed,
+}
+
+/// Checks whether the reader answers on the home network.
+typedef ReaderProbe = Future<bool> Function();
 
 /// Pairs a reader that was identified from its QR code.
 ///
@@ -23,6 +37,8 @@ enum _Step { joinHotspot, waiting, networks, password, sending, done, failed }
 ///    physical button to be pressed.
 /// 3. List the Wi-Fi networks the reader can see.
 /// 4. Send the chosen network and password to the reader.
+/// 5. Wait for the reader to answer on the home network, then mark it
+///    configured and hand over to Home, which connects to it.
 ///
 /// The scanned [deviceId] only labels the setup. Holding the device and
 /// pressing its button is what authorises it.
@@ -35,6 +51,9 @@ class DevicePairingScreen extends StatefulWidget {
     this.storage,
     this.pollInterval = const Duration(seconds: 2),
     this.pollTimeout = const Duration(minutes: 3),
+    this.probe,
+    this.confirmInterval = const Duration(seconds: 3),
+    this.confirmTimeout = const Duration(seconds: 60),
   });
 
   final String deviceId;
@@ -48,6 +67,13 @@ class DevicePairingScreen extends StatefulWidget {
 
   /// Used when the reader does not say how long the pairing window lasts.
   final Duration pollTimeout;
+
+  /// Overrides the home-network check (tests). By default this is the
+  /// app's existing reachability check, [PiApiService.checkHealth], so a
+  /// confirmed reader is one the app can actually connect to.
+  final ReaderProbe? probe;
+  final Duration confirmInterval;
+  final Duration confirmTimeout;
 
   @override
   State<DevicePairingScreen> createState() => _DevicePairingScreenState();
@@ -84,21 +110,26 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
   bool _hidden = false;
   bool _showPassword = false;
 
-  // Result
+  // Confirmation on the home network
   String _sentSsid = '';
-  String? _deviceMessage;
   bool _contactLost = false;
+  Timer? _confirmTimer;
+  bool _probeInFlight = false;
+  int _probeAttempts = 0;
+  PiApiService? _probeApi;
 
   bool get _canLeaveFreely =>
       _step == _Step.joinHotspot ||
-      _step == _Step.done ||
+      _step == _Step.confirmFailed ||
       _step == _Step.failed;
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _confirmTimer?.cancel();
     widget.binding.release();
     _ownedService?.dispose();
+    _probeApi?.dispose();
     _address.dispose();
     _ssid.dispose();
     _password.dispose();
@@ -328,13 +359,13 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     });
 
     try {
-      final result = await _service!.submitWifi(
+      await _service!.submitWifi(
         _token!,
         ssid: ssid,
         password: password,
         hidden: _hidden,
       );
-      await _finish(ssid, message: result.message, contactLost: false);
+      await _finish(ssid, contactLost: false);
     } on DeviceUnreachableException {
       // Expected when the reader drops its hotspot to join the network.
       await _finish(ssid, contactLost: true);
@@ -362,31 +393,94 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     });
   }
 
-  Future<void> _finish(
-    String ssid, {
-    String? message,
-    required bool contactLost,
-  }) async {
+  DeviceStorageService get _storage => widget.storage ?? DeviceStorageService();
+
+  Future<void> _finish(String ssid, {required bool contactLost}) async {
     try {
-      // The reader has the details but has not confirmed it joined the
-      // network, so the device is recorded as still being set up.
-      await (widget.storage ?? DeviceStorageService()).updateDeviceSetupStatus(
+      // The reader has the details but has not been seen on the home
+      // network yet, so it is recorded as still being set up.
+      await _storage.updateDeviceSetupStatus(
         widget.deviceId,
         DeviceSetupStatus.provisioningPending,
       );
+      DeviceEvents.notify(DeviceChange(widget.deviceId));
     } catch (_) {}
+    // Stop pinning traffic to the setup hotspot; the reader is leaving it.
     await widget.binding.release();
     if (!mounted) return;
+    _sentSsid = ssid;
+    _contactLost = contactLost;
+    _startConfirming();
+  }
+
+  void _startConfirming() {
+    _confirmTimer?.cancel();
     setState(() {
-      _sentSsid = ssid;
-      _deviceMessage = message;
-      _contactLost = contactLost;
-      _step = _Step.done;
+      _probeAttempts = 0;
+      _step = _Step.confirming;
+    });
+    _confirmTimer = Timer.periodic(widget.confirmInterval, (_) => _probeOnce());
+  }
+
+  Future<bool> _probe() {
+    final probe = widget.probe;
+    if (probe != null) return probe();
+    return (_probeApi ??= PiApiService()).checkHealth();
+  }
+
+  Future<void> _probeOnce() async {
+    // A slow check must not stack up further checks.
+    if (_probeInFlight || _step != _Step.confirming) return;
+    _probeInFlight = true;
+    try {
+      _probeAttempts++;
+      final online = await _probe();
+      if (!mounted || _step != _Step.confirming) return;
+      if (online) {
+        await _onConfirmed();
+        return;
+      }
+      if (widget.confirmInterval * _probeAttempts >= widget.confirmTimeout) {
+        _confirmTimer?.cancel();
+        setState(() => _step = _Step.confirmFailed);
+      } else {
+        setState(() {});
+      }
+    } finally {
+      _probeInFlight = false;
+    }
+  }
+
+  Future<void> _onConfirmed() async {
+    _confirmTimer?.cancel();
+    try {
+      await _storage.updateDeviceSetupStatus(
+        widget.deviceId,
+        DeviceSetupStatus.configured,
+      );
+      await _storage.setActiveDeviceId(widget.deviceId);
+    } catch (_) {}
+    // Home and Profile reload, and the app shell connects to the reader.
+    DeviceEvents.notify(DeviceChange(widget.deviceId, readyToConnect: true));
+    if (!mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  /// The reader may have gone back to setup mode (for example after a wrong
+  /// password), so start over from joining its hotspot.
+  void _restartSetup() {
+    _confirmTimer?.cancel();
+    setState(() {
+      _token = null;
+      _error = null;
+      _busy = false;
+      _step = _Step.joinHotspot;
     });
   }
 
   void _fail(String title, String message) {
     _stopPolling();
+    _confirmTimer?.cancel();
     widget.binding.release();
     if (!mounted) return;
     setState(() {
@@ -434,7 +528,10 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _Stepper(index: _stepIndex, failed: _step == _Step.failed),
+                _Stepper(
+                  index: _stepIndex,
+                  failed: _step == _Step.failed || _step == _Step.confirmFailed,
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 if (_error != null && _step != _Step.failed) ...[
                   _Banner(_error!),
@@ -453,7 +550,7 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     _Step.joinHotspot => 0,
     _Step.waiting => 1,
     _Step.networks || _Step.password || _Step.sending => 2,
-    _Step.done => 4,
+    _Step.confirming || _Step.confirmFailed => 3,
     // A failure can only happen while waiting for the button or after it.
     _Step.failed => _token == null ? 1 : 2,
   };
@@ -464,7 +561,8 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     _Step.networks => _networksView(),
     _Step.password => _passwordView(),
     _Step.sending => _sendingView(),
-    _Step.done => _doneView(),
+    _Step.confirming => _confirmingView(),
+    _Step.confirmFailed => _confirmFailedView(),
     _Step.failed => _failedView(),
   };
 
@@ -836,45 +934,90 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
 
   // Result -----------------------------------------------------------
 
-  Widget _doneView() {
+  Widget _confirmingView() {
+    final elapsed = widget.confirmInterval * _probeAttempts;
+    final total = widget.confirmTimeout.inSeconds;
+    final fraction = total == 0
+        ? 0.0
+        : (elapsed.inSeconds / total).clamp(0.0, 1.0).toDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _heroIcon(
-          _contactLost
-              ? Icons.signal_wifi_statusbar_connected_no_internet_4_rounded
-              : Icons.check_circle_rounded,
-          _contactLost ? AppColors.orange : AppColors.success,
-        ),
+        _heroIcon(Icons.wifi_find_rounded, context.accent),
         const SizedBox(height: AppSpacing.lg),
-        _title(
-          _contactLost ? 'Lost contact with the reader' : 'Wi-Fi details sent',
-        ),
+        _title('Waiting for your reader to join "$_sentSsid"'),
         const SizedBox(height: AppSpacing.sm),
         _body(
           _contactLost
-              ? 'That is expected if the reader has already left its setup '
-                    'hotspot to join "$_sentSsid". Naadh has not confirmed it.'
-              : (_deviceMessage?.isNotEmpty == true
-                    ? _deviceMessage!
-                    : 'The reader is now joining "$_sentSsid". Naadh has not '
-                          'confirmed the connection yet.'),
+              ? 'The reader has left its setup hotspot. Naadh is now looking '
+                    'for it on your Wi-Fi.'
+              : 'Wi-Fi details sent. Naadh is now looking for the reader on '
+                    'your Wi-Fi.',
         ),
         const SizedBox(height: AppSpacing.lg),
         _Instructions(
-          title: 'What happens next',
+          title: 'While you wait',
           steps: [
-            'The reader leaves ${PairingConfig.hotspotName} and joins '
-                '"$_sentSsid". Your phone may disconnect from it.',
-            'Reconnect your phone to your normal Wi-Fi.',
-            'Open Naadh and connect to the reader from Home.',
+            'Reconnect your phone to "$_sentSsid", the same Wi-Fi you chose '
+                'for the reader.',
+            'Keep the reader switched on.',
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppShapes.chipRadius),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 6,
+            color: context.accent,
+            backgroundColor: context.surfaceElevated,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Checking… ${elapsed.inSeconds}s of ${total}s',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: context.mutedText, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _confirmFailedView() {
+    final seconds = widget.confirmTimeout.inSeconds;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _heroIcon(Icons.wifi_off_rounded, AppColors.danger),
+        const SizedBox(height: AppSpacing.lg),
+        _title("Couldn't confirm your reader rejoined your Wi-Fi"),
+        const SizedBox(height: AppSpacing.sm),
+        _body(
+          'Naadh looked for the reader on your network for ${seconds}s and '
+          'did not find it. It is saved as "Setting up" until it is found.',
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _Instructions(
+          title: 'Before you try again',
+          steps: [
+            'Make sure your phone is on "$_sentSsid", not on '
+                '${PairingConfig.hotspotName} or mobile data.',
+            'If the reader is back in setup mode, the Wi-Fi password may '
+                'have been wrong. Use "Set up Wi-Fi again".',
           ],
         ),
         const SizedBox(height: AppSpacing.xl),
         _primaryButton(
-          label: 'Done',
-          icon: Icons.check_rounded,
-          onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+          label: 'Try again',
+          icon: Icons.refresh_rounded,
+          onPressed: _startConfirming,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _secondaryButton('Set up Wi-Fi again', _restartSetup),
+        const SizedBox(height: AppSpacing.sm),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
         ),
       ],
     );

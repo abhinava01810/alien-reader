@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alien_reader_app/features/device/data/device_events.dart';
 import 'package:alien_reader_app/features/device/data/models/saved_device.dart';
 import 'package:alien_reader_app/features/device/data/services/device_storage_service.dart';
 import 'package:alien_reader_app/features/device/data/services/network_binding.dart';
@@ -75,27 +76,66 @@ class _Reader {
 
 const _pending = 202;
 
+/// Answers the home-network check from a script, counting calls.
+class _Probe {
+  _Probe(this.answers);
+
+  /// Served in order, then the last one repeats.
+  final List<bool> answers;
+  int calls = 0;
+
+  Future<bool> call() async {
+    final i = calls < answers.length ? calls : answers.length - 1;
+    calls++;
+    return answers[i];
+  }
+}
+
 Future<void> _pump(
   WidgetTester tester, {
   required _Reader reader,
   _FakeBinding? binding,
   DeviceStorageService? storage,
+  _Probe? probe,
 }) async {
   tester.view.physicalSize = const Size(800, 2400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+  final navigator = GlobalKey<NavigatorState>();
   await tester.pumpWidget(
     MaterialApp(
-      home: DevicePairingScreen(
+      navigatorKey: navigator,
+      home: const Scaffold(body: Text('home-root')),
+    ),
+  );
+  final reachable = probe ?? _Probe([false]);
+  navigator.currentState!.push(
+    MaterialPageRoute<void>(
+      builder: (_) => DevicePairingScreen(
         deviceId: 'NAADH-000123',
         service: reader.service(),
         binding: binding ?? _FakeBinding(),
         storage: storage,
         pollInterval: const Duration(milliseconds: 100),
         pollTimeout: const Duration(milliseconds: 450),
+        probe: reachable.call,
+        confirmInterval: const Duration(milliseconds: 100),
+        confirmTimeout: const Duration(milliseconds: 400),
       ),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+/// Runs the flow up to submitting the password for Home-WiFi.
+Future<void> _submitHomeWifi(WidgetTester tester) async {
+  await tester.tap(find.text('Continue'));
+  await _advance(tester, 8);
+  await tester.tap(find.text('Home-WiFi'));
+  await _advance(tester, 2);
+  await tester.enterText(find.byType(TextField), 'correct-horse-battery');
+  await tester.tap(find.text('Connect'));
+  await _advance(tester, 2);
 }
 
 /// Lets queued futures and timers run without waiting on animations.
@@ -118,7 +158,7 @@ void main() {
     expect(find.text('Continue'), findsOneWidget);
   });
 
-  testWidgets('full flow: button press, network, password, sent', (
+  testWidgets('full flow: button press, network, password, confirmed', (
     tester,
   ) async {
     final reader = _Reader(
@@ -130,7 +170,17 @@ void main() {
     );
     final binding = _FakeBinding();
     final storage = DeviceStorageService();
-    await _pump(tester, reader: reader, binding: binding, storage: storage);
+    final probe = _Probe([false, false, true]);
+    final events = <DeviceChange>[];
+    final sub = DeviceEvents.changes.listen(events.add);
+    addTearDown(sub.cancel);
+    await _pump(
+      tester,
+      reader: reader,
+      binding: binding,
+      storage: storage,
+      probe: probe,
+    );
 
     await tester.tap(find.text('Continue'));
     await _advance(tester, 2);
@@ -171,7 +221,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'correct-horse-battery');
     await tester.tap(find.text('Connect'));
-    await _advance(tester, 4);
+    await _advance(tester, 2);
 
     final submit = reader.requests.firstWhere(
       (r) => r.url.path == '/api/setup/wifi',
@@ -181,14 +231,145 @@ void main() {
     expect(body['ssid'], 'Home-WiFi');
     expect(body['password'], 'correct-horse-battery');
 
-    // Honest result: details sent, not "connected".
-    expect(find.text('Wi-Fi details sent'), findsOneWidget);
-    expect(find.textContaining('has not confirmed'), findsOneWidget);
+    // Not a dead end: the app now looks for the reader on the home network.
+    expect(
+      find.text('Waiting for your reader to join "Home-WiFi"'),
+      findsOneWidget,
+    );
     expect(binding.releases, greaterThan(0));
+    expect(
+      (await storage.getDevice('NAADH-000123'))?.setupStatus,
+      DeviceSetupStatus.provisioningPending,
+    );
 
-    // Recorded as still being set up, never as configured.
+    // The third check finds it: configured, active, and back to Home.
+    await _advance(tester, 8);
+    await tester.pumpAndSettle();
+    expect(probe.calls, 3);
     final saved = await storage.getDevice('NAADH-000123');
-    expect(saved?.setupStatus, DeviceSetupStatus.provisioningPending);
+    expect(saved?.setupStatus, DeviceSetupStatus.configured);
+    expect(await storage.getActiveDeviceId(), 'NAADH-000123');
+    expect(find.text('home-root'), findsOneWidget);
+    expect(find.byType(DevicePairingScreen), findsNothing);
+    // Home/Profile reload on the first event; the shell connects on the last.
+    expect(events.first.readyToConnect, isFalse);
+    expect(events.last.readyToConnect, isTrue);
+    expect(events.last.deviceId, 'NAADH-000123');
+  });
+
+  testWidgets('no reader after the timeout: plain message and retry', (
+    tester,
+  ) async {
+    final reader = _Reader(
+      pollReplies: [
+        _json({'token': 'tok-1'}),
+      ],
+    );
+    final storage = DeviceStorageService();
+    final probe = _Probe([false]);
+    await _pump(tester, reader: reader, storage: storage, probe: probe);
+
+    await _submitHomeWifi(tester);
+    await _advance(tester, 10);
+
+    expect(
+      find.text("Couldn't confirm your reader rejoined your Wi-Fi"),
+      findsOneWidget,
+    );
+    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('Set up Wi-Fi again'), findsOneWidget);
+    // Still recorded as being set up, never promoted.
+    expect(
+      (await storage.getDevice('NAADH-000123'))?.setupStatus,
+      DeviceSetupStatus.provisioningPending,
+    );
+
+    // Try again runs the check again.
+    final callsBefore = probe.calls;
+    await tester.tap(find.text('Try again'));
+    await _advance(tester, 3);
+    expect(probe.calls, greaterThan(callsBefore));
+    expect(
+      find.text('Waiting for your reader to join "Home-WiFi"'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('retry can succeed after a failed confirmation', (tester) async {
+    final reader = _Reader(
+      pollReplies: [
+        _json({'token': 'tok-1'}),
+      ],
+    );
+    final storage = DeviceStorageService();
+    // Four misses fill the 400ms window; the retry then finds it.
+    final probe = _Probe([false, false, false, false, true]);
+    await _pump(tester, reader: reader, storage: storage, probe: probe);
+
+    await _submitHomeWifi(tester);
+    await _advance(tester, 10);
+    expect(
+      find.text("Couldn't confirm your reader rejoined your Wi-Fi"),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Try again'));
+    await _advance(tester, 4);
+    await tester.pumpAndSettle();
+
+    expect(find.text('home-root'), findsOneWidget);
+    expect(
+      (await storage.getDevice('NAADH-000123'))?.setupStatus,
+      DeviceSetupStatus.configured,
+    );
+  });
+
+  testWidgets('"Set up Wi-Fi again" goes back to joining the hotspot', (
+    tester,
+  ) async {
+    final reader = _Reader(
+      pollReplies: [
+        _json({'token': 'tok-1'}),
+      ],
+    );
+    await _pump(tester, reader: reader);
+
+    await _submitHomeWifi(tester);
+    await _advance(tester, 10);
+    await tester.tap(find.text('Set up Wi-Fi again'));
+    await _advance(tester, 2);
+
+    expect(find.text('Continue'), findsOneWidget);
+    expect(find.textContaining('NAADH-Setup'), findsWidgets);
+  });
+
+  testWidgets('losing the reader right after sending still confirms', (
+    tester,
+  ) async {
+    final reader = _Reader(
+      pollReplies: [
+        _json({'token': 'tok-1'}),
+      ],
+      wifiReply: (_) => throw http.ClientException('connection reset'),
+    );
+    final storage = DeviceStorageService();
+    await _pump(
+      tester,
+      reader: reader,
+      storage: storage,
+      probe: _Probe([false, true]),
+    );
+
+    await _submitHomeWifi(tester);
+    expect(find.textContaining('has left its setup hotspot'), findsOneWidget);
+
+    await _advance(tester, 6);
+    await tester.pumpAndSettle();
+    expect(find.text('home-root'), findsOneWidget);
+    expect(
+      (await storage.getDevice('NAADH-000123'))?.setupStatus,
+      DeviceSetupStatus.configured,
+    );
   });
 
   testWidgets('410 shows a timeout with a way to start again', (tester) async {
@@ -279,7 +460,7 @@ void main() {
             )
             as Map<String, dynamic>;
     expect(body['password'], '');
-    expect(find.text('Wi-Fi details sent'), findsOneWidget);
+    expect(find.text('Waiting for your reader to join "Cafe"'), findsOneWidget);
   });
 
   testWidgets('the device rejecting the details keeps the form open', (

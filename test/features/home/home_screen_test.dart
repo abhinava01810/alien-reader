@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alien_reader_app/features/device/data/device_events.dart';
 import 'package:alien_reader_app/features/device/data/models/saved_device.dart';
 import 'package:alien_reader_app/features/device/data/services/device_storage_service.dart';
 import 'package:alien_reader_app/features/device/domain/reader_device.dart';
@@ -190,6 +191,36 @@ void main() {
 
       expect(find.text('No pages captured yet'), findsOneWidget);
       expect(find.text('0 Pages'), findsOneWidget);
+    });
+
+    testWidgets('reloads when pairing saves a reader while Home is open', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomeScreen(
+              status: ReaderConnectionStatus.disconnected,
+              onConnect: () {},
+              onCapture: () {},
+              onFinish: () {},
+              pageCount: 0,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Set up your Naadh reader'), findsOneWidget);
+
+      await DeviceStorageService().saveDevice(
+        SavedDevice(deviceId: 'naadh-new', createdAt: DateTime(2026)),
+      );
+      DeviceEvents.notify(const DeviceChange('naadh-new'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set up your Naadh reader'), findsNothing);
+      expect(find.text('Reconnect'), findsOneWidget);
     });
 
     testWidgets('tapping the status bar opens the connection sheet', (

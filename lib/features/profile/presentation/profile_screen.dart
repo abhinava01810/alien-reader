@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../../core/services/cloud_api_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../features/device/data/device_events.dart';
 import '../../../features/device/data/models/saved_device.dart';
 import '../../../features/device/data/services/device_storage_service.dart';
 import '../../../features/device/domain/reader_device.dart';
@@ -57,6 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _storageTotalBytes = 0;
   bool _statsLoading = true;
   late CloudUser? _user = widget.cloudUser;
+  StreamSubscription<DeviceChange>? _deviceChanges;
 
   @override
   void initState() {
@@ -64,6 +67,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadStats();
     _loadUser();
     _loadDevices();
+    _deviceChanges = DeviceEvents.changes.listen((_) => _loadDevices());
+  }
+
+  @override
+  void dispose() {
+    _deviceChanges?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadDevices() async {
