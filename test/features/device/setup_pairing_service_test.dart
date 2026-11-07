@@ -239,4 +239,75 @@ void main() {
       }
     });
   });
+
+  group('manual device address', () {
+    test('adds http:// and the reader port when missing', () {
+      expect(
+        PairingConfig.normalizeAddress('192.168.1.16'),
+        'http://192.168.1.16:8000',
+      );
+      expect(
+        PairingConfig.normalizeAddress(' http://192.168.1.16:8000/ '),
+        'http://192.168.1.16:8000',
+      );
+      expect(
+        PairingConfig.normalizeAddress('reader.local:9000'),
+        'http://reader.local:9000',
+      );
+      expect(PairingConfig.normalizeAddress(''), isNull);
+      expect(PairingConfig.normalizeAddress('ftp://x'), isNull);
+    });
+
+    test('reports the real failure, not the hotspot', () async {
+      final service = SetupPairingService(
+        baseUrl: 'http://192.168.1.250:8000',
+        viaHotspot: false,
+        client: MockClient(
+          (_) async => throw const SocketException(
+            'Connection failed',
+            osError: OSError('Connection refused', 111),
+          ),
+        ),
+      );
+      await expectLater(
+        service.startSession(),
+        throwsA(
+          isA<DeviceUnreachableException>()
+              .having(
+                (e) => e.message,
+                'message',
+                contains('Connection refused'),
+              )
+              .having(
+                (e) => e.message,
+                'message',
+                contains('192.168.1.250:8000'),
+              )
+              .having(
+                (e) => e.message,
+                'message',
+                isNot(contains('NAADH-Setup')),
+              ),
+        ),
+      );
+    });
+
+    test('the hotspot path keeps its hotspot advice', () async {
+      final service = SetupPairingService(
+        client: MockClient(
+          (_) async => throw const SocketException('Network is unreachable'),
+        ),
+      );
+      await expectLater(
+        service.startSession(),
+        throwsA(
+          isA<DeviceUnreachableException>().having(
+            (e) => e.message,
+            'message',
+            contains('NAADH-Setup'),
+          ),
+        ),
+      );
+    });
+  });
 }

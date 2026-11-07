@@ -54,6 +54,9 @@ class DevicePairingScreen extends StatefulWidget {
     this.probe,
     this.confirmInterval = const Duration(seconds: 3),
     this.confirmTimeout = const Duration(seconds: 60),
+    this.hotspotPasswords,
+    this.autoJoin = true,
+    this.joinTimeout = const Duration(seconds: 45),
   });
 
   final String deviceId;
@@ -74,6 +77,16 @@ class DevicePairingScreen extends StatefulWidget {
   final ReaderProbe? probe;
   final Duration confirmInterval;
   final Duration confirmTimeout;
+
+  /// Where the reader hotspot's password is kept once typed (secure storage).
+  final HotspotPasswordStore? hotspotPasswords;
+
+  /// Join the hotspot from inside the app as soon as the screen opens, when a
+  /// password is already saved.
+  final bool autoJoin;
+
+  /// How long Android may take, including the person answering its prompt.
+  final Duration joinTimeout;
 
   @override
   State<DevicePairingScreen> createState() => _DevicePairingScreenState();
@@ -118,6 +131,22 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
   int _probeAttempts = 0;
   PiApiService? _probeApi;
 
+  // Joining the hotspot from the app
+  late final HotspotPasswordStore _passwords =
+      widget.hotspotPasswords ?? HotspotPasswordStore();
+  bool _joining = false;
+  bool _hotspotJoined = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoJoin) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _joinWithSavedPassword(),
+      );
+    }
+  }
+
   bool get _canLeaveFreely =>
       _step == _Step.joinHotspot ||
       _step == _Step.confirmFailed ||
@@ -138,14 +167,133 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
 
   // ─── Flow ─────────────────────────────────────────────────────────
 
-  String? _normalizedAddress() {
-    var text = _address.text.trim();
-    if (text.isEmpty) return null;
-    if (!text.contains('://')) text = 'http://$text';
-    final uri = Uri.tryParse(text);
-    if (uri == null || uri.host.isEmpty) return null;
-    return text;
+  // ─── Joining the hotspot from the app ─────────────────────────────
+
+  Future<void> _joinWithSavedPassword() async {
+    final saved = await _passwords.read();
+    if (saved == null || !mounted || _step != _Step.joinHotspot) return;
+    await _joinAutomatically(saved, fromSaved: true);
   }
+
+  Future<void> _connectAutomaticallyPressed() async {
+    final password = await _askHotspotPassword(await _passwords.read());
+    if (password == null || !mounted) return;
+    await _joinAutomatically(password, fromSaved: false);
+  }
+
+  Future<void> _joinAutomatically(
+    String password, {
+    required bool fromSaved,
+  }) async {
+    setState(() {
+      _joining = true;
+      _error = null;
+    });
+    final result = await widget.binding.joinHotspot(
+      ssid: PairingConfig.hotspotName,
+      passphrase: password,
+      timeout: widget.joinTimeout,
+    );
+    if (!mounted) return;
+    if (result == HotspotJoin.connected) {
+      await _passwords.save(password);
+      _hotspotJoined = true;
+      _address.text = PairingConfig.defaultBaseUrl;
+      setState(() => _joining = false);
+      await _beginSession();
+      return;
+    }
+    setState(() {
+      _joining = false;
+      _error = _joinFailureMessage(result, fromSaved: fromSaved);
+    });
+  }
+
+  String _joinFailureMessage(HotspotJoin result, {required bool fromSaved}) {
+    const name = PairingConfig.hotspotName;
+    final which = fromSaved ? 'saved ' : '';
+    return switch (result) {
+      HotspotJoin.permissionDenied =>
+        'Naadh needs the Wi-Fi permission to join $name for you. You can '
+            'join it in Wi-Fi settings instead (steps below).',
+      HotspotJoin.unsupported =>
+        "This phone can't join $name from inside Naadh. Join it in Wi-Fi "
+            'settings instead (steps below).',
+      HotspotJoin.unavailable =>
+        "Couldn't join $name automatically. The prompt may have been "
+            'declined, the reader may not be in setup mode, or the '
+            '${which}password may be wrong. Try again, or join it in Wi-Fi '
+            'settings (steps below).',
+      _ =>
+        'Something went wrong joining $name. Try again, or join it in Wi-Fi '
+            'settings (steps below).',
+    };
+  }
+
+  /// Asks for the hotspot's Wi-Fi password. Null when cancelled.
+  Future<String?> _askHotspotPassword(String? current) async {
+    final controller = TextEditingController(text: current ?? '');
+    var show = false;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: const Text('Reader Wi-Fi password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'The password of the ${PairingConfig.hotspotName} network. '
+                'It is kept encrypted on this phone so Naadh can join it for '
+                'you next time.',
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: controller,
+                obscureText: !show,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  suffixIcon: IconButton(
+                    tooltip: show ? 'Hide password' : 'Show password',
+                    icon: Icon(
+                      show
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                    ),
+                    onPressed: () => setDialog(() => show = !show),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text),
+              child: const Text('Connect'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null || result.isEmpty) return null;
+    return result;
+  }
+
+  String? _normalizedAddress() => PairingConfig.normalizeAddress(_address.text);
+
+  /// The default address is the reader's own hotspot; anything else is a
+  /// reader the person says is already reachable on a network.
+  bool _isHotspotAddress(String base) =>
+      base == PairingConfig.normalizeAddress(PairingConfig.defaultBaseUrl);
+
+  bool _viaHotspot = true;
 
   Future<void> _beginSession() async {
     final base = _normalizedAddress();
@@ -164,11 +312,23 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
       _error = null;
     });
 
-    await widget.binding.bindToWifi();
+    _viaHotspot = _isHotspotAddress(base);
+    if (_hotspotJoined && !_viaHotspot) {
+      // A typed address means a reader on another network: leave the hotspot.
+      await widget.binding.release();
+      _hotspotJoined = false;
+    }
+    // When the app joined the hotspot itself, traffic is already bound to that
+    // exact network; otherwise pin it to Wi-Fi.
+    if (!_hotspotJoined) await widget.binding.bindToWifi();
     _ownedService?.dispose();
     _ownedService = null;
     _service =
-        widget.service ?? (_ownedService = SetupPairingService(baseUrl: base));
+        widget.service ??
+        (_ownedService = SetupPairingService(
+          baseUrl: base,
+          viaHotspot: _viaHotspot,
+        ));
 
     try {
       final session = await _service!.startSession();
@@ -189,8 +349,10 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
       _showJoinError(e.toString());
     } on SetupNetworkException catch (e) {
       _showJoinError(
-        '$e\nIf Android says the network has no internet, choose to stay '
-        'connected.',
+        _viaHotspot
+            ? '$e\nIf Android says the network has no internet, choose to '
+                  'stay connected.'
+            : e.toString(),
       );
     }
   }
@@ -407,6 +569,7 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     } catch (_) {}
     // Stop pinning traffic to the setup hotspot; the reader is leaving it.
     await widget.binding.release();
+    _hotspotJoined = false;
     if (!mounted) return;
     _sentSsid = ssid;
     _contactLost = contactLost;
@@ -482,6 +645,7 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     _stopPolling();
     _confirmTimer?.cancel();
     widget.binding.release();
+    _hotspotJoined = false;
     if (!mounted) return;
     setState(() {
       _failureTitle = title;
@@ -664,8 +828,45 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
+        if (_joining)
+          AppCard(
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: context.accent,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                const Expanded(
+                  child: Text(
+                    'Joining ${PairingConfig.hotspotName}… Approve the '
+                    'Android prompt to connect.',
+                  ),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          _primaryButton(
+            label: 'Connect automatically',
+            icon: Icons.wifi_rounded,
+            onPressed: _busy ? null : _connectAutomaticallyPressed,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Android will ask you to confirm joining '
+            '${PairingConfig.hotspotName}. You stay in Naadh.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: context.mutedText, fontSize: 12.5),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.lg),
         _Instructions(
-          title: 'Join the reader\'s Wi-Fi',
+          title: 'Or join it by hand',
           steps: const [
             'Open your phone\'s Wi-Fi settings.',
             'Join the network named ${PairingConfig.hotspotName}.',
@@ -697,11 +898,21 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        _primaryButton(
-          label: 'Continue',
-          icon: Icons.arrow_forward_rounded,
-          loading: _busy,
-          onPressed: _beginSession,
+        OutlinedButton(
+          onPressed: _busy || _joining ? null : _beginSession,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(AppSpacing.buttonHeight),
+          ),
+          child: _busy
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: context.accent,
+                  ),
+                )
+              : const Text('Continue'),
         ),
       ],
     );

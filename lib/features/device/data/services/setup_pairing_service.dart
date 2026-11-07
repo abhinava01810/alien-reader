@@ -17,6 +17,24 @@ abstract final class PairingConfig {
     'NAADH_SETUP_BASE_URL',
     defaultValue: 'http://10.42.0.1:8000',
   );
+
+  /// Port of the reader's API when an entered address has none.
+  static const int defaultPort = 8000;
+
+  /// Turns what a person typed ("192.168.1.16", "http://host:8000/") into a
+  /// base URL, adding http:// and the reader's port when missing. Null when
+  /// it is not a usable address.
+  static String? normalizeAddress(String input) {
+    var text = input.trim();
+    if (text.isEmpty) return null;
+    if (!text.contains('://')) text = 'http://$text';
+    final uri = Uri.tryParse(text);
+    if (uri == null || uri.host.isEmpty) return null;
+    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+    final port = uri.hasPort ? uri.port : defaultPort;
+    final host = uri.host.contains(':') ? '[${uri.host}]' : uri.host;
+    return '${uri.scheme}://$host:$port';
+  }
 }
 
 /// The reader gave no answer at all (no route, timeout, dropped link), as
@@ -84,12 +102,20 @@ class WifiSubmitResult {
 /// The Wi-Fi password is only ever sent in the [submitWifi] body, and is never
 /// kept, logged, or included in an error message.
 class SetupPairingService {
-  SetupPairingService({http.Client? client, String? baseUrl})
-    : _client = client ?? http.Client(),
-      baseUrl = _trimSlash(baseUrl ?? PairingConfig.defaultBaseUrl);
+  SetupPairingService({
+    http.Client? client,
+    String? baseUrl,
+    this.viaHotspot = true,
+  }) : _client = client ?? http.Client(),
+       baseUrl = _trimSlash(baseUrl ?? PairingConfig.defaultBaseUrl);
 
   final http.Client _client;
   final String baseUrl;
+
+  /// True when the reader is reached on its own setup hotspot. False when
+  /// the person typed an address for a reader already on a network: then
+  /// connection errors report the real failure, not the hotspot.
+  final bool viaHotspot;
 
   static const Duration _callTimeout = Duration(seconds: 8);
   static const Duration _scanTimeout = Duration(seconds: 25);
@@ -259,19 +285,35 @@ class SetupPairingService {
       return await request().timeout(timeout);
     } on TimeoutException {
       throw DeviceUnreachableException(
-        'Timed out trying to $what. Check that your phone is still on '
-        '${PairingConfig.hotspotName}.',
+        viaHotspot
+            ? 'Timed out trying to $what. Check that your phone is still on '
+                  '${PairingConfig.hotspotName}.'
+            : _unreachableAt(what, 'no reply after ${timeout.inSeconds} s'),
       );
-    } on SocketException {
-      throw DeviceUnreachableException(_unreachable(what));
-    } on http.ClientException {
-      throw DeviceUnreachableException(_unreachable(what));
+    } on SocketException catch (e) {
+      throw DeviceUnreachableException(
+        viaHotspot
+            ? _unreachable(what)
+            : _unreachableAt(what, e.osError?.message ?? e.message),
+      );
+    } on http.ClientException catch (e) {
+      throw DeviceUnreachableException(
+        viaHotspot ? _unreachable(what) : _unreachableAt(what, e.message),
+      );
     }
   }
 
   String _unreachable(String what) =>
       "Couldn't reach the device to $what. Check that your phone is joined "
       'to ${PairingConfig.hotspotName}.';
+
+  /// Manual address: say where we tried and what actually went wrong.
+  String _unreachableAt(String what, String reason) {
+    final uri = Uri.parse(baseUrl);
+    final cleaned = reason.trim().isEmpty ? 'no connection' : reason.trim();
+    return "Couldn't reach the device at ${uri.host}:${uri.port} to $what "
+        '($cleaned).';
+  }
 
   void _rejectCommonErrors(http.Response res, String what) {
     if (res.statusCode >= 200 && res.statusCode < 300) return;
