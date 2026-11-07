@@ -74,14 +74,19 @@ $text
             )
             .timeout(timeout);
       } on TimeoutException {
-        throw const GeminiException('Gemini took too long to answer.');
+        throw const GeminiException(
+          'Gemini took too long to answer.',
+          shortReason: 'Gemini took too long',
+        );
       } on SocketException {
         throw const GeminiException(
           'No internet connection for the AI summary.',
+          shortReason: 'no internet connection',
         );
       } on http.ClientException {
         throw const GeminiException(
           'No internet connection for the AI summary.',
+          shortReason: 'no internet connection',
         );
       }
 
@@ -91,11 +96,17 @@ $text
       try {
         body = jsonDecode(res.body);
       } on FormatException {
-        throw const GeminiException('Gemini sent an unreadable answer.');
+        throw const GeminiException(
+          'Gemini sent an unreadable answer.',
+          shortReason: 'Gemini error',
+        );
       }
       final summary = cleanOcrText(_textOf(body));
       if (summary.isEmpty) {
-        throw const GeminiException('Gemini returned an empty summary.');
+        throw const GeminiException(
+          'Gemini returned an empty summary.',
+          shortReason: 'Gemini returned nothing',
+        );
       }
       return summary;
     } finally {
@@ -134,21 +145,33 @@ $text
       return const GeminiException(
         'Gemini rejected the API key. Check it in Settings.',
         keyRejected: true,
+        shortReason: 'Gemini key not accepted',
       );
     }
     if (res.statusCode == 429) {
       return const GeminiException(
         'Gemini usage limit reached for this key. Try again later.',
+        shortReason: 'Gemini limit reached',
       );
     }
-    return GeminiException('Gemini error (HTTP ${res.statusCode}).');
+    return GeminiException(
+      'Gemini error (HTTP ${res.statusCode}).',
+      shortReason: 'Gemini error',
+    );
   }
 }
 
 class GeminiException implements Exception {
-  const GeminiException(this.message, {this.keyRejected = false});
+  const GeminiException(
+    this.message, {
+    this.keyRejected = false,
+    this.shortReason = 'Gemini error',
+  });
   final String message;
   final bool keyRejected;
+
+  /// A few words for "Summary not available (...)".
+  final String shortReason;
   @override
   String toString() => message;
 }

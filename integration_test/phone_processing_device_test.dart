@@ -22,12 +22,17 @@ import 'package:alien_reader_app/features/phone_processing/data/capture_image_fe
 import 'package:alien_reader_app/features/phone_processing/data/gemini_summary_service.dart';
 import 'package:alien_reader_app/features/phone_processing/data/on_device_ocr.dart';
 import 'package:alien_reader_app/features/phone_processing/data/phone_document_processor.dart';
+import 'package:alien_reader_app/features/phone_processing/data/phone_processing_settings.dart';
 import 'package:alien_reader_app/features/phone_processing/data/phone_tts_audio.dart';
 import 'package:alien_reader_app/shared/models/document_output.dart';
 
 const _imageUrl = String.fromEnvironment('CAPTURE_IMAGE_URL');
 const _summaryForAudio = String.fromEnvironment('SUMMARY_FOR_AUDIO');
 const _geminiKey = String.fromEnvironment('GEMINI_TEST_KEY');
+
+/// Use the Gemini key already saved in the app on this phone (it never
+/// leaves the phone and is not printed).
+const _useSavedKey = bool.fromEnvironment('USE_SAVED_GEMINI_KEY');
 
 double _wavSeconds(File f) {
   final b = f.readAsBytesSync();
@@ -105,7 +110,11 @@ void main() {
     // Real fetch, ML Kit, TTS and storage. Gemini is real when
     // GEMINI_TEST_KEY is given, otherwise a stub that returns a fixed
     // summary (marked in the report).
-    final gemini = _geminiKey.isNotEmpty
+    final savedKey = _useSavedKey
+        ? await tester.runAsync(PhoneProcessingSettings().geminiKey)
+        : null;
+    final liveKey = savedKey ?? (_geminiKey.isEmpty ? null : _geminiKey);
+    final gemini = liveKey != null
         ? GeminiSummaryService()
         : GeminiSummaryService(
             client: MockClient(
@@ -131,7 +140,7 @@ void main() {
       () => processor.process(
         imageUrl: _imageUrl,
         pageNumber: 1,
-        geminiKey: _geminiKey.isEmpty ? 'stub' : _geminiKey,
+        geminiKey: liveKey ?? 'stub',
         onStatus: statuses.add,
       ),
     );
@@ -143,7 +152,9 @@ void main() {
       summaryText: result.summary,
       imageUrl: Uri.file(result.imagePath).toString(),
       originalAudioUrl: Uri.file(result.originalAudioPath).toString(),
-      summaryAudioUrl: Uri.file(result.summaryAudioPath).toString(),
+      summaryAudioUrl: result.summaryAudioPath == null
+          ? null
+          : Uri.file(result.summaryAudioPath!).toString(),
     );
     final storage = DocumentStorageService();
     final saved = await tester.runAsync(
@@ -157,10 +168,16 @@ void main() {
       ),
     );
     expect(saved, isNotNull);
+    // No summary audio when the summary itself was not available.
+    expect(
+      saved!.summaryAudioPath == null,
+      result.summaryError != null,
+      reason: 'summary audio only with a real summary',
+    );
     for (final path in [
-      saved!.imagePath,
+      saved.imagePath,
       saved.originalAudioPath,
-      saved.summaryAudioPath,
+      if (result.summaryError == null) saved.summaryAudioPath,
       saved.originalPdfPath,
     ]) {
       expect(path, isNotNull);
@@ -192,7 +209,7 @@ void main() {
 
     // ignore: avoid_print
     print(
-      'FULL_FLOW_REPORT ${jsonEncode({'timings_ms': result.timings.map((k, v) => MapEntry(k, v.inMilliseconds)), 'gemini': _geminiKey.isEmpty ? 'stub' : 'live', 'summary': result.summary, 'saved_id': saved.documentId})}',
+      'FULL_FLOW_REPORT ${jsonEncode({'timings_ms': result.timings.map((k, v) => MapEntry(k, v.inMilliseconds)), 'gemini': liveKey == null ? 'stub' : (savedKey != null ? 'live (key saved in app)' : 'live'), 'summary': result.summary, 'summary_error': result.summaryError, 'text_chars': result.text.length, 'text_start': result.text.substring(0, result.text.length.clamp(0, 120)), 'original_audio_bytes': File(result.originalAudioPath).lengthSync(), 'summary_audio': result.summaryAudioPath, 'saved_id': saved.documentId})}',
     );
 
     // Leave no test document behind in the user's Files tab.

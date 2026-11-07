@@ -602,7 +602,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 summaryText: result.summary,
                 imageUrl: Uri.file(result.imagePath).toString(),
                 originalAudioUrl: Uri.file(result.originalAudioPath).toString(),
-                summaryAudioUrl: Uri.file(result.summaryAudioPath).toString(),
+                summaryAudioUrl: result.summaryAudioPath == null
+                    ? null
+                    : Uri.file(result.summaryAudioPath!).toString(),
               ),
               pageNumber,
             );

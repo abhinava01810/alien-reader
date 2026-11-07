@@ -18,14 +18,23 @@ class PhoneProcessingResult {
     required this.summaryAudioPath,
     required this.orientation,
     required this.timings,
+    this.summaryError,
   });
 
   final String text;
+
+  /// The AI summary, or "Summary not available (...)" when it failed.
   final String summary;
   final String imagePath;
   final String originalAudioPath;
-  final String summaryAudioPath;
+
+  /// Null when there is no summary to read out.
+  final String? summaryAudioPath;
   final OcrOrientation orientation;
+
+  /// Why the summary is missing (e.g. "Gemini limit reached"); null when
+  /// the summary worked. The rest of the page is still complete.
+  final String? summaryError;
 
   /// How long each stage took, for testing and comparison.
   final Map<String, Duration> timings;
@@ -98,25 +107,38 @@ class PhoneDocumentProcessor {
     if (page.text.isEmpty) throw const OcrFailureException();
     onStatus?.call(PhoneStage.working);
 
-    final summary = await _gemini.summarize(page.text, apiKey: geminiKey);
+    // Only the summary may fail on its own: the page keeps its image, text
+    // and text audio, as when the reader cannot make a summary.
+    String? summary;
+    String? summaryError;
+    try {
+      summary = await _gemini.summarize(page.text, apiKey: geminiKey);
+    } on GeminiException catch (e) {
+      summaryError = e.shortReason;
+    } catch (_) {
+      summaryError = 'Gemini error';
+    }
     timings['summary'] = lap();
 
     final speech = _speech ??= DeviceSpeechSynthesizer();
     final originalAudio = '${dir.path}/original_audio.wav';
-    final summaryAudio = '${dir.path}/summary_audio.wav';
+    final summaryAudio = summary == null
+        ? null
+        : '${dir.path}/summary_audio.wav';
     await speech.synthesize(page.text, originalAudio);
-    await speech.synthesize(summary, summaryAudio);
+    if (summary != null) await speech.synthesize(summary, summaryAudio!);
     timings['audio'] = lap();
     onStatus?.call(PhoneStage.ready);
 
     return PhoneProcessingResult(
       text: page.text,
-      summary: summary,
+      summary: summary ?? 'Summary not available ($summaryError).',
       imagePath: image.path,
       originalAudioPath: originalAudio,
       summaryAudioPath: summaryAudio,
       orientation: page.orientation,
       timings: timings,
+      summaryError: summaryError,
     );
   }
 

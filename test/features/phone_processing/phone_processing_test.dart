@@ -435,6 +435,7 @@ void main() {
       _FakeOcr ocr,
       _FakeSpeech speech, {
       String summary = 'Short summary.',
+      http.Response? geminiReply,
     }) => PhoneDocumentProcessor(
       workDir: () async => dir,
       fetcher: CaptureImageFetcher(
@@ -444,20 +445,22 @@ void main() {
       ocr: PageOcr(engine: ocr, rotator: _NameRotator()),
       gemini: GeminiSummaryService(
         client: MockClient(
-          (_) async => http.Response(
-            jsonEncode({
-              'candidates': [
-                {
-                  'content': {
-                    'parts': [
-                      {'text': summary},
-                    ],
-                  },
-                },
-              ],
-            }),
-            200,
-          ),
+          (_) async =>
+              geminiReply ??
+              http.Response(
+                jsonEncode({
+                  'candidates': [
+                    {
+                      'content': {
+                        'parts': [
+                          {'text': summary},
+                        ],
+                      },
+                    },
+                  ],
+                }),
+                200,
+              ),
         ),
       ),
       speech: speech,
@@ -486,13 +489,53 @@ void main() {
       expect(result.summary, 'Short summary.');
       expect(File(result.imagePath).readAsBytesSync(), [1, 2, 3]);
       expect(File(result.originalAudioPath).existsSync(), isTrue);
-      expect(File(result.summaryAudioPath).existsSync(), isTrue);
+      expect(File(result.summaryAudioPath!).existsSync(), isTrue);
+      expect(result.summaryError, isNull);
       expect(speech.spoken, [
         'Meeting moved to Friday at 10am.',
         'Short summary.',
       ]);
       expect(statuses, ['QUEUED', 'PROCESSING', 'READY']);
       expect(result.timings.keys, ['fetch', 'ocr', 'summary', 'audio']);
+    });
+
+    test('Gemini failure keeps the page: image, text and its audio', () async {
+      final cases = {
+        http.Response('{"error":{"status":"RESOURCE_EXHAUSTED"}}', 429):
+            'Gemini limit reached',
+        http.Response('{"error":{"status":"PERMISSION_DENIED"}}', 403):
+            'Gemini key not accepted',
+        http.Response('oops', 500): 'Gemini error',
+      };
+      for (final entry in cases.entries) {
+        final speech = _FakeSpeech();
+        final statuses = <String>[];
+        final result =
+            await build(
+              _FakeOcr({
+                'captured_image': const OcrReading(
+                  'Meeting moved to Friday at 10am.',
+                  confidence: 90,
+                ),
+              }),
+              speech,
+              geminiReply: entry.key,
+            ).process(
+              imageUrl: 'http://reader:8000/capture/3/image',
+              pageNumber: 3,
+              geminiKey: 'k',
+              onStatus: statuses.add,
+            );
+        expect(result.text, 'Meeting moved to Friday at 10am.');
+        expect(result.summaryError, entry.value);
+        expect(result.summary, 'Summary not available (${entry.value}).');
+        expect(File(result.imagePath).existsSync(), isTrue);
+        expect(File(result.originalAudioPath).existsSync(), isTrue);
+        // The placeholder is not read out as if it were a summary.
+        expect(result.summaryAudioPath, isNull);
+        expect(speech.spoken, ['Meeting moved to Friday at 10am.']);
+        expect(statuses, ['QUEUED', 'PROCESSING', 'READY']);
+      }
     });
 
     test('no text → the same OCR failure the Pi path reports', () async {
