@@ -21,6 +21,7 @@ class OutputScreen extends StatefulWidget {
     this.isProcessing = false,
     this.storage,
     this.initialDocument,
+    this.latestDocument,
   });
 
   final bool isProcessing;
@@ -28,6 +29,10 @@ class OutputScreen extends StatefulWidget {
 
   /// Skips the storage lookup when provided (used by tests).
   final SavedDocument? initialDocument;
+
+  /// The capture that was just processed and saved. Shown as soon as it
+  /// arrives, ahead of any storage reload still in flight.
+  final SavedDocument? latestDocument;
 
   @override
   State<OutputScreen> createState() => _OutputScreenState();
@@ -44,6 +49,10 @@ class _OutputScreenState extends State<OutputScreen>
 
   SavedDocument? _document;
   bool _loadingDoc = true;
+
+  /// Bumped whenever [OutputScreen.latestDocument] is applied, so a storage
+  /// reload started earlier cannot replace it with an older document.
+  int _docGeneration = 0;
   String outputDevice = 'Phone Speaker';
 
   AudioPlayer? _player;
@@ -58,8 +67,9 @@ class _OutputScreenState extends State<OutputScreen>
   @override
   void initState() {
     super.initState();
-    if (widget.initialDocument != null) {
-      _document = widget.initialDocument;
+    final first = widget.latestDocument ?? widget.initialDocument;
+    if (first != null) {
+      _document = first;
       _loadingDoc = false;
     } else {
       _loadDocument();
@@ -70,10 +80,24 @@ class _OutputScreenState extends State<OutputScreen>
   @override
   void didUpdateWidget(covariant OutputScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _syncShimmer();
-    if (oldWidget.isProcessing && !widget.isProcessing) {
+    final latest = widget.latestDocument;
+    if (latest != null && !identical(latest, oldWidget.latestDocument)) {
+      _showLatest(latest);
+    } else if (oldWidget.isProcessing && !widget.isProcessing) {
       _loadDocument();
     }
+    _syncShimmer();
+  }
+
+  Future<void> _showLatest(SavedDocument doc) async {
+    _docGeneration++;
+    await _stopAudio();
+    if (!mounted) return;
+    setState(() {
+      _document = doc;
+      _loadingDoc = false;
+    });
+    _syncShimmer();
   }
 
   void _syncShimmer() {
@@ -87,11 +111,12 @@ class _OutputScreenState extends State<OutputScreen>
   bool get _showLoading => widget.isProcessing || _loadingDoc;
 
   Future<void> _loadDocument() async {
+    final generation = _docGeneration;
     try {
       final docs = await (widget.storage ?? DocumentStorageService())
           .loadAllDocuments();
       docs.sort((a, b) => b.captureDate.compareTo(a.captureDate));
-      if (!mounted) return;
+      if (!mounted || generation != _docGeneration) return;
       await _stopAudio();
       setState(() {
         _document = docs.isEmpty ? null : docs.first;

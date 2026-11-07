@@ -16,7 +16,8 @@ import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:alien_reader_app/features/document/data/services/document_storage_service.dart';
-import 'package:alien_reader_app/features/document/presentation/document_results_screen.dart';
+import 'package:alien_reader_app/features/document/data/models/saved_document.dart';
+import 'package:alien_reader_app/features/output/presentation/output_screen.dart';
 import 'package:alien_reader_app/features/phone_processing/data/capture_image_fetcher.dart';
 import 'package:alien_reader_app/features/phone_processing/data/gemini_summary_service.dart';
 import 'package:alien_reader_app/features/phone_processing/data/on_device_ocr.dart';
@@ -98,7 +99,7 @@ void main() {
     expect(File(original).lengthSync(), greaterThan(44));
   });
 
-  testWidgets('full flow: processor → save to Files → results screen', (
+  testWidgets('full flow: processor → save to Files → Output tab', (
     tester,
   ) async {
     // Real fetch, ML Kit, TTS and storage. Gemini is real when
@@ -170,19 +171,24 @@ void main() {
       File(result.imagePath).lengthSync(),
     );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DocumentResultsScreen(output: output, savedDocument: saved),
-      ),
-    );
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.byType(Image), findsWidgets);
-    await tester.scrollUntilVisible(
-      find.text('Saved to Files tab'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Saved to Files tab'), findsOneWidget);
+    // The Output tab, as the app shows it when processing ends: busy while
+    // processing, then handed the saved document.
+    Widget outputTab({required bool busy, SavedDocument? latest}) =>
+        MaterialApp(
+          home: Scaffold(
+            body: OutputScreen(isProcessing: busy, latestDocument: latest),
+          ),
+        );
+    await tester.pumpWidget(outputTab(busy: true));
+    await tester.pump();
+    await tester.pumpWidget(outputTab(busy: false, latest: saved));
+    await tester.pump(const Duration(milliseconds: 500));
+    final firstLine = result.text.split('\n').first.trim();
+    expect(find.textContaining(firstLine), findsWidgets);
+    expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+    await tester.tap(find.text('Summary'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining(result.summary.trim()), findsWidgets);
 
     // ignore: avoid_print
     print(

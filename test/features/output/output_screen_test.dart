@@ -68,4 +68,27 @@ void main() {
     expect(find.text('Raw OCR words'), findsNothing);
     expect(find.text('No text extracted'), findsNothing);
   });
+
+  testWidgets('a newly processed capture replaces the shown document', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(OutputScreen(initialDocument: _doc)));
+    await tester.pump();
+    expect(find.text('Raw OCR words'), findsOneWidget);
+
+    final fresh = SavedDocument(
+      documentId: 'd3',
+      documentTitle: 'Fresh',
+      captureDate: DateTime(2026, 2),
+      originalText: 'Text read on the phone',
+      summaryText: 'Phone summary',
+    );
+    await tester.pumpWidget(
+      _wrap(OutputScreen(initialDocument: _doc, latestDocument: fresh)),
+    );
+    await tester.pump();
+
+    expect(find.text('Text read on the phone'), findsOneWidget);
+    expect(find.text('Raw OCR words'), findsNothing);
+  });
 }

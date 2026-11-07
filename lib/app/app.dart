@@ -99,6 +99,9 @@ class _AppShellState extends State<AppShell> {
 
   MainTab _tab = MainTab.home;
 
+  /// The most recent processed capture, handed to the Output tab.
+  SavedDocument? _latestOutput;
+
   int _pageCount = 0;
 
   bool _isLoadingSession = true;
@@ -532,11 +535,22 @@ class _AppShellState extends State<AppShell> {
 
     if (!mounted) return;
 
-    // Replace Processing screen with DocumentResults (Output page)
-    await Navigator.of(context).pushReplacementNamed(
-      AppRoutes.documentResults,
-      arguments: DocumentResultsArgs(output: output, savedDocument: savedDoc),
-    );
+    if (savedDoc == null) {
+      // Not saved, so the Output tab cannot load it: show this result on
+      // its own page instead.
+      await Navigator.of(context).pushReplacementNamed(
+        AppRoutes.documentResults,
+        arguments: DocumentResultsArgs(output: output, savedDocument: savedDoc),
+      );
+      return;
+    }
+
+    // Close the Processing screen and land on the Output tab with this result.
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    setState(() {
+      _latestOutput = savedDoc;
+      _tab = MainTab.output;
+    });
   }
 
   /// Disconnects from Raspberry Pi hardware and releases controls.
@@ -660,7 +674,10 @@ class _AppShellState extends State<AppShell> {
               await _sessionStorage.savePageCount(newPageCount);
             },
           ),
-          OutputScreen(isProcessing: _status == ReaderConnectionStatus.busy),
+          OutputScreen(
+            isProcessing: _status == ReaderConnectionStatus.busy,
+            latestDocument: _latestOutput,
+          ),
           FilesScreen(device: _device),
           ProfileScreen(
             userName: _userName,
