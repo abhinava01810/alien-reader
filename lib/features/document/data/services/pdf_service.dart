@@ -63,6 +63,16 @@ class PdfService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+        // Page numbers only exist while a page is being laid out, so they
+        // belong in the footer. Reading them in `build` threw "Null check
+        // operator used on a null value" on every save.
+        footer: (pw.Context context) => pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Text(
+            'Page ${context.pageNumber} of ${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500),
+          ),
+        ),
         build: (pw.Context context) => [
           // ── App title ──────────────────────────────────────────────
           pw.Text(
@@ -85,12 +95,6 @@ class PdfService {
             style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 6),
-
-          // ── Page info ─────────────────────────────────────────────
-          pw.Text(
-            'Page ${context.pageNumber} of ${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500),
-          ),
           pw.Divider(color: PdfColors.deepPurple200, thickness: 1.5),
           pw.SizedBox(height: 8),
 
@@ -106,11 +110,16 @@ class PdfService {
           pw.SizedBox(height: 12),
 
           // ── Main content ───────────────────────────────────────────
-          pw.Text(
+          // One widget per line so long documents flow onto more pages
+          // (a single Text taller than a page cannot be split).
+          for (final line in _pageableLines(
             content.isEmpty ? '(No content available)' : content,
-            style: const pw.TextStyle(fontSize: 12),
-            textAlign: pw.TextAlign.left,
-          ),
+          ))
+            pw.Text(
+              line,
+              style: const pw.TextStyle(fontSize: 12),
+              textAlign: pw.TextAlign.left,
+            ),
           pw.SizedBox(height: 24),
 
           // ── Footer ─────────────────────────────────────────────────
@@ -129,6 +138,23 @@ class PdfService {
     await file.parent.create(recursive: true);
     await file.writeAsBytes(bytes);
     return file;
+  }
+
+  /// Lines of [text], with very long lines cut at word boundaries so no
+  /// single line can be taller than a page.
+  static List<String> _pageableLines(String text, {int maxChars = 1500}) {
+    final out = <String>[];
+    for (final line in text.split('\n')) {
+      var rest = line;
+      while (rest.length > maxChars) {
+        var cut = rest.lastIndexOf(' ', maxChars);
+        if (cut <= 0) cut = maxChars;
+        out.add(rest.substring(0, cut));
+        rest = rest.substring(cut).trimLeft();
+      }
+      out.add(rest.isEmpty ? ' ' : rest);
+    }
+    return out;
   }
 
   // ─── Date formatting (no intl dependency) ────────────────────────
