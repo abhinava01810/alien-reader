@@ -52,3 +52,13 @@ app.*.map.json
 # Generated APKs and build artifacts
 *.apk
 *.aab
+
+# Local build settings passed with --dart-define-from-file (see
+# dart_defines.example.json). Kept out of git in case secrets are added.
+dart_defines.json
+
+# Release signing: the upload keystore and its passwords live outside the
+# repo; never commit them.
+android/key.properties
+*.jks
+*.keystore

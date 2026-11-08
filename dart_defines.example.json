@@ -1,0 +1,4 @@
+{
+  "NAADH_API_BASE_URL": "https://alien-reader-cloud-api.onrender.com",
+  "NAADH_SETUP_BASE_URL": "http://10.42.0.1:8000"
+}
