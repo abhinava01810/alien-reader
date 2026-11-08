@@ -288,6 +288,9 @@ void main() {
     expect(probe.calls, 3);
     final saved = await storage.getDevice('NAADH-000123');
     expect(saved?.setupStatus, DeviceSetupStatus.configured);
+    // Set up over the hotspot: no address to remember; the app finds the
+    // reader by its own name.
+    expect(saved?.lastKnownAddress, isNull);
     expect(await storage.getActiveDeviceId(), 'NAADH-000123');
     expect(find.text('home-root'), findsOneWidget);
     expect(find.byType(DevicePairingScreen), findsNothing);
@@ -295,6 +298,37 @@ void main() {
     expect(events.first.readyToConnect, isFalse);
     expect(events.last.readyToConnect, isTrue);
     expect(events.last.deviceId, 'NAADH-000123');
+  });
+
+  testWidgets('a typed device address is saved with the reader', (
+    tester,
+  ) async {
+    final reader = _Reader(
+      pollReplies: [
+        _json({'token': 'tok-1'}),
+      ],
+    );
+    final storage = DeviceStorageService();
+    await _pump(
+      tester,
+      reader: reader,
+      storage: storage,
+      probe: _Probe([true]),
+    );
+
+    await tester.tap(find.text('Advanced: device address'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Device address'),
+      '192.168.1.16',
+    );
+    await _submitHomeWifi(tester);
+    await _advance(tester, 8);
+    await tester.pumpAndSettle();
+
+    final saved = await storage.getDevice('NAADH-000123');
+    expect(saved?.lastKnownAddress, 'http://192.168.1.16:8000');
+    expect(saved?.setupStatus, DeviceSetupStatus.configured);
   });
 
   testWidgets('no reader after the timeout: plain message and retry', (

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/pi_config.dart';
+import '../../../features/device/data/services/reader_address.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../device/domain/reader_device.dart';
 import '../widgets/home_camera_placeholder.dart';
@@ -44,7 +44,7 @@ class FullScreenCameraScreen extends StatelessWidget {
                 child: AspectRatio(
                   aspectRatio: 3 / 4,
                   child: MjpegCameraView(
-                    streamUrl: PiConfig.streamUrl,
+                    streamUrl: ReaderAddress.instance.streamUrl,
                     active: isDeviceReady,
                   ),
                 ),

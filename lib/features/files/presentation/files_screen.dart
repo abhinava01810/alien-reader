@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
-import '../../../core/constants/pi_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../features/device/data/raspberry_pi_device.dart';
@@ -203,10 +202,12 @@ class _FilesScreenState extends State<FilesScreen> {
         imageUrl: (imageRawUrl != null && imageRawUrl.isNotEmpty)
             ? device.getFullUrl(imageRawUrl)
             : null,
-        originalAudioUrl:
-            '${PiConfig.baseUrl}/capture/$pageNumber/audio/original',
-        summaryAudioUrl:
-            '${PiConfig.baseUrl}/capture/$pageNumber/audio/summary',
+        originalAudioUrl: device.getFullUrl(
+          '/capture/$pageNumber/audio/original',
+        ),
+        summaryAudioUrl: device.getFullUrl(
+          '/capture/$pageNumber/audio/summary',
+        ),
       );
 
       // Auto-sync session capture to local storage

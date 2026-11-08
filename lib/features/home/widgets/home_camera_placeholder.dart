@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/pi_config.dart';
+import '../../../features/device/data/services/reader_address.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../device/domain/reader_device.dart';
 import 'mjpeg_camera_view.dart';
@@ -51,7 +51,7 @@ class HomeCameraPlaceholder extends StatelessWidget {
             // ── Live MJPEG camera feed ────────────────────────────────
             Positioned.fill(
               child: MjpegCameraView(
-                streamUrl: PiConfig.streamUrl,
+                streamUrl: ReaderAddress.instance.streamUrl,
                 active:
                     status == ReaderConnectionStatus.connected ||
                     status == ReaderConnectionStatus.busy,

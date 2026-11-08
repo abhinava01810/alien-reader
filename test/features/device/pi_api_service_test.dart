@@ -107,4 +107,58 @@ void main() {
       expect(await failing.checkHealth(), isFalse);
     });
   });
+
+  group('a supplied reader address', () {
+    test('replaces the default in every call', () async {
+      const reader = 'http://naadh-3f9a1c.local:8000';
+      final sent = <http.Request>[];
+      final service = PiApiService(
+        baseUrl: () => reader,
+        client: MockClient((r) async {
+          sent.add(r);
+          return http.Response(jsonEncode({'ok': true}), 200);
+        }),
+      );
+      await service.getStatus();
+      await service.startSession('A');
+      await service.triggerCapture();
+      await service.getCaptureStatus(1);
+      await service.getCaptureDetails(1);
+      await service.getCaptures();
+      await service.endSession();
+      await service.checkHealth();
+      expect(sent.map((r) => r.url.origin).toSet(), {
+        'http://naadh-3f9a1c.local:8000',
+      });
+      expect(service.streamUrl, '$reader/camera/stream');
+      expect(service.getFullUrl('/capture/1/image'), '$reader/capture/1/image');
+    });
+
+    test('is read on every request, so a re-pair takes effect', () async {
+      var reader = 'http://192.168.1.16:8000';
+      final sent = <String>[];
+      final service = PiApiService(
+        baseUrl: () => reader,
+        client: MockClient((r) async {
+          sent.add(r.url.origin);
+          return http.Response('{}', 200);
+        }),
+      );
+      await service.getStatus();
+      reader = 'http://naadh-000002.local:8000';
+      await service.getStatus();
+      expect(sent, [
+        'http://192.168.1.16:8000',
+        'http://naadh-000002.local:8000',
+      ]);
+    });
+
+    test('null or empty falls back to the default', () {
+      expect(
+        PiApiService(baseUrl: () => '').streamUrl,
+        '$_default/camera/stream',
+      );
+      expect(PiApiService(baseUrl: null).streamUrl, '$_default/camera/stream');
+    });
+  });
 }

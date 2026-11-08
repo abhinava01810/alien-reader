@@ -17,6 +17,7 @@ import '../features/device/data/device_events.dart';
 import '../features/device/data/raspberry_pi_device.dart';
 import '../features/device/data/services/device_storage_service.dart';
 import '../features/device/data/services/pi_api_service.dart';
+import '../features/device/data/services/reader_address.dart';
 import '../features/device/domain/reader_device.dart';
 import '../features/document/data/models/saved_document.dart';
 import '../features/document/data/services/document_storage_service.dart';
@@ -91,7 +92,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   _CloudAuthState _authState = _CloudAuthState.checking;
   CloudUser? _cloudUser;
 
-  final RaspberryPiDevice _device = RaspberryPiDevice();
+  /// Talks to the paired reader at the address [ReaderAddress] resolved.
+  final RaspberryPiDevice _device = RaspberryPiDevice(
+    apiService: PiApiService(baseUrl: () => ReaderAddress.instance.current),
+  );
   final SessionStorage _sessionStorage = SessionStorage();
   final DocumentStorageService _storageService = DocumentStorageService();
   final PhoneProcessingSettings _phoneSettings = PhoneProcessingSettings();
@@ -235,6 +239,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     });
 
     try {
+      // Find this reader on the network (its own name, a typed address,
+      // or the old shared default) before starting the session there.
+      await ReaderAddress.instance.resolve();
       await _device.startSession(_userName!);
       // A new reader session restarts page numbers and drops older jobs, so
       // pages counted in an earlier session are no longer on the reader.
@@ -302,7 +309,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final ourSession = _device.sessionId;
     String? lost;
     try {
-      final data = await PiApiService().getStatus();
+      final api = PiApiService(baseUrl: () => ReaderAddress.instance.current);
+      final Map<String, dynamic> data;
+      try {
+        data = await api.getStatus();
+      } finally {
+        api.dispose();
+      }
       if (data['status'] != 'APP_ACTIVE') {
         lost = 'The reader ended this session.';
       } else if (ourSession != null && data['session_id'] != ourSession) {

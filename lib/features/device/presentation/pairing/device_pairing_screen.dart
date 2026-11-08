@@ -13,7 +13,7 @@ import '../../data/models/provisioning_models.dart';
 import '../../data/models/saved_device.dart';
 import '../../data/services/device_storage_service.dart';
 import '../../data/services/network_binding.dart';
-import '../../data/services/pi_api_service.dart';
+import '../../data/services/reader_address.dart';
 import '../../data/services/setup_pairing_service.dart';
 
 enum _Step {
@@ -73,9 +73,11 @@ class DevicePairingScreen extends StatefulWidget {
   /// Used when the reader does not say how long the pairing window lasts.
   final Duration pollTimeout;
 
-  /// Overrides the home-network check (tests). By default this is the
-  /// app's existing reachability check, [PiApiService.checkHealth], so a
-  /// confirmed reader is one the app can actually connect to.
+  /// Overrides the home-network check (tests). By default the app looks
+  /// for this reader by its own name and any typed address, and accepts it
+  /// only if its `/status` does not name a different device
+  /// ([ReaderAddress.findReader]); the address found is the one the app
+  /// then connects to.
   final ReaderProbe? probe;
   final Duration confirmInterval;
   final Duration confirmTimeout;
@@ -139,7 +141,6 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
   Timer? _confirmTimer;
   bool _probeInFlight = false;
   int _probeAttempts = 0;
-  PiApiService? _probeApi;
 
   // Joining the hotspot from the app
   late final HotspotPasswordStore _passwords =
@@ -175,7 +176,6 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     _confirmTimer?.cancel();
     widget.binding.release();
     _ownedService?.dispose();
-    _probeApi?.dispose();
     _address.dispose();
     _ssid.dispose();
     _password.dispose();
@@ -255,6 +255,10 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
 
   bool _viaHotspot = true;
 
+  /// The typed reader address used for this setup, if any (not the hotspot).
+  /// Saved with the reader so the app can find it there later.
+  String? _typedAddress;
+
   Future<void> _beginSession() async {
     final base = _normalizedAddress();
     if (base == null) {
@@ -273,6 +277,7 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     });
 
     _viaHotspot = _isHotspotAddress(base);
+    _typedAddress = _viaHotspot ? null : base;
     if (_hotspotJoined && !_viaHotspot) {
       // A typed address means a reader on another network: leave the hotspot.
       await widget.binding.release();
@@ -524,6 +529,7 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
       await _storage.updateDeviceSetupStatus(
         widget.deviceId,
         DeviceSetupStatus.provisioningPending,
+        lastKnownAddress: _typedAddress,
       );
       DeviceEvents.notify(DeviceChange(widget.deviceId));
     } catch (_) {}
@@ -548,7 +554,7 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
   Future<bool> _probe() {
     final probe = widget.probe;
     if (probe != null) return probe();
-    return (_probeApi ??= PiApiService()).checkHealth();
+    return ReaderAddress.instance.findReader(widget.deviceId);
   }
 
   Future<void> _probeOnce() async {

@@ -10,10 +10,22 @@ import '../models/provisioning_models.dart';
 class PiApiService {
   final http.Client _client;
 
-  PiApiService({http.Client? client}) : _client = client ?? http.Client();
+  /// Where the reader is, asked on every request so a re-paired reader is
+  /// picked up without recreating this service. Null or empty means the
+  /// default [PiConfig.baseUrl].
+  final String Function()? _baseUrlFor;
+
+  PiApiService({http.Client? client, String Function()? baseUrl})
+    : _client = client ?? http.Client(),
+      _baseUrlFor = baseUrl;
+
+  String get _baseUrl {
+    final url = _baseUrlFor?.call();
+    return (url == null || url.isEmpty) ? PiConfig.baseUrl : url;
+  }
 
   Future<Map<String, dynamic>> getStatus() async {
-    final uri = Uri.parse('${PiConfig.baseUrl}/status');
+    final uri = Uri.parse('$_baseUrl/status');
 
     final response = await _client.get(uri).timeout(PiConfig.connectionTimeout);
 
@@ -25,7 +37,7 @@ class PiApiService {
   }
 
   Future<Map<String, dynamic>> startSession(String displayName) async {
-    final uri = Uri.parse('${PiConfig.baseUrl}/session/start');
+    final uri = Uri.parse('$_baseUrl/session/start');
 
     final response = await _client
         .post(
@@ -49,7 +61,7 @@ class PiApiService {
   }
 
   Future<Map<String, dynamic>> captureImage() async {
-    final uri = Uri.parse('${PiConfig.baseUrl}/capture');
+    final uri = Uri.parse('$_baseUrl/capture');
 
     final response = await _client
         .post(uri, headers: {'Accept': 'application/json'})
@@ -69,7 +81,7 @@ class PiApiService {
   /// Response includes: page_number, status ("PROCESSING"), image_url.
   /// The Pi continues OCR + summary + audio generation asynchronously.
   Future<Map<String, dynamic>> triggerCapture() async {
-    final uri = Uri.parse('${PiConfig.baseUrl}/capture');
+    final uri = Uri.parse('$_baseUrl/capture');
 
     final response = await _client
         .post(uri, headers: {'Accept': 'application/json'})
@@ -87,7 +99,7 @@ class PiApiService {
   /// GET /capture/{pageNumber} — polls the processing state for a single page.
   /// Status values: QUEUED | PROCESSING | READY | FAILED
   Future<Map<String, dynamic>> getCaptureStatus(int pageNumber) async {
-    final uri = Uri.parse('${PiConfig.baseUrl}/capture/$pageNumber');
+    final uri = Uri.parse('$_baseUrl/capture/$pageNumber');
 
     final response = await _client.get(uri).timeout(PiConfig.connectionTimeout);
 
@@ -101,7 +113,7 @@ class PiApiService {
   }
 
   Future<Map<String, dynamic>> getCaptureDetails(int pageNumber) async {
-    final uri = Uri.parse('${PiConfig.baseUrl}/capture/$pageNumber');
+    final uri = Uri.parse('$_baseUrl/capture/$pageNumber');
 
     final response = await _client.get(uri).timeout(PiConfig.connectionTimeout);
 
@@ -116,7 +128,7 @@ class PiApiService {
   }
 
   Future<Map<String, dynamic>> getCaptures() async {
-    final uri = Uri.parse('${PiConfig.baseUrl}/captures');
+    final uri = Uri.parse('$_baseUrl/captures');
 
     final response = await _client.get(uri).timeout(PiConfig.connectionTimeout);
 
@@ -131,13 +143,13 @@ class PiApiService {
   }
 
   /// Full URL for the live MJPEG camera stream.
-  String get streamUrl => '${PiConfig.baseUrl}/camera/stream';
+  String get streamUrl => '$_baseUrl/camera/stream';
 
   /// Checks if the Raspberry Pi is reachable with a 3-second timeout.
   /// Returns true if the /status endpoint responds with HTTP 200.
   Future<bool> checkHealth() async {
     try {
-      final uri = Uri.parse('${PiConfig.baseUrl}/status');
+      final uri = Uri.parse('$_baseUrl/status');
       final response = await _client
           .get(uri)
           .timeout(const Duration(seconds: 3));
@@ -156,11 +168,11 @@ class PiApiService {
       return path;
     }
 
-    return '${PiConfig.baseUrl}$path';
+    return '$_baseUrl$path';
   }
 
   Future<void> endSession() async {
-    final uri = Uri.parse('${PiConfig.baseUrl}/session/end');
+    final uri = Uri.parse('$_baseUrl/session/end');
 
     await _client.post(uri).timeout(PiConfig.connectionTimeout);
   }
