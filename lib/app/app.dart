@@ -11,6 +11,8 @@ import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/verify_email_banner.dart';
+import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/device/data/device_events.dart';
 import '../features/device/data/raspberry_pi_device.dart';
 import '../features/device/data/services/device_storage_service.dart';
@@ -313,9 +315,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     // Only if nothing changed while the reader was being asked.
     if (_status != ReaderConnectionStatus.connected || _isCapturing) return;
     setState(() => _status = ReaderConnectionStatus.disconnected);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$lost Tap Reconnect to continue.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$lost Tap Reconnect to continue.')));
   }
 
   Future<void> _capture() async {
@@ -770,53 +772,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       return LoginScreen(auth: _cloudAuth, onLoggedIn: _onCloudLoggedIn);
     }
 
+    final user = _cloudUser;
+    final needsVerify = user != null && !user.emailVerified;
     return Scaffold(
       appBar: AlienHeader(onOpenSettings: _openSettings),
-      body: IndexedStack(
-        index: MainTab.values.indexOf(_tab),
+      body: Column(
         children: [
-          HomeScreen(
-            status: _status,
-            onConnect: _connect,
-            onDisconnect: _disconnectFromPi,
-            onCapture: _capture,
-            onFinish: _process,
-            pageCount: _pageCount,
-            ocrFailureMessage: _ocrFailureMessage,
-            userName: _userName,
-            onOpenFiles: () => setState(() => _tab = MainTab.files),
-            onOpenSettings: _openSettings,
-            onOpenConnection: _showConnectionDialog,
-            onOpenProfile: () => setState(() => _tab = MainTab.profile),
-            onDeletePage: () async {
-              if (_pageCount <= 0) return;
-
-              final newPageCount = _pageCount - 1;
-
-              setState(() {
-                _pageCount = newPageCount;
-              });
-
-              await _sessionStorage.savePageCount(newPageCount);
-            },
-          ),
-          OutputScreen(
-            isProcessing: _status == ReaderConnectionStatus.busy,
-            latestDocument: _latestOutput,
-          ),
-          FilesScreen(device: _device),
-          ProfileScreen(
-            userName: _userName,
-            cloudUser: _cloudUser,
-            cloudAuth: _cloudAuth,
-            status: _status,
-            pageCount: _pageCount,
-            sessionActive:
-                _status == ReaderConnectionStatus.connected ||
-                _status == ReaderConnectionStatus.busy,
-            onDisconnect: _disconnectFromPi,
-            onSignOut: _signOut,
-          ),
+          if (needsVerify)
+            VerifyEmailBanner(
+              email: user.email,
+              onVerifyNow: () => _openVerifyEmail(user.email),
+            ),
+          Expanded(child: _tabs()),
         ],
       ),
       bottomNavigationBar: AppBottomNav(
@@ -827,6 +794,78 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           });
         },
       ),
+    );
+  }
+
+  /// Back to the 6-digit code screen for an account that has not verified
+  /// its email yet (it has Resend code for an expired or lost code).
+  Future<void> _openVerifyEmail(String email) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    await navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => VerifyEmailScreen(
+          email: email,
+          auth: _cloudAuth,
+          onVerified: (user) async {
+            if (mounted) setState(() => _cloudUser = user);
+            navigator.pop();
+            messenger.showSnackBar(
+              const SnackBar(content: Text('Email verified.')),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _tabs() {
+    return IndexedStack(
+      index: MainTab.values.indexOf(_tab),
+      children: [
+        HomeScreen(
+          status: _status,
+          onConnect: _connect,
+          onDisconnect: _disconnectFromPi,
+          onCapture: _capture,
+          onFinish: _process,
+          pageCount: _pageCount,
+          ocrFailureMessage: _ocrFailureMessage,
+          userName: _userName,
+          onOpenFiles: () => setState(() => _tab = MainTab.files),
+          onOpenSettings: _openSettings,
+          onOpenConnection: _showConnectionDialog,
+          onOpenProfile: () => setState(() => _tab = MainTab.profile),
+          onDeletePage: () async {
+            if (_pageCount <= 0) return;
+
+            final newPageCount = _pageCount - 1;
+
+            setState(() {
+              _pageCount = newPageCount;
+            });
+
+            await _sessionStorage.savePageCount(newPageCount);
+          },
+        ),
+        OutputScreen(
+          isProcessing: _status == ReaderConnectionStatus.busy,
+          latestDocument: _latestOutput,
+        ),
+        FilesScreen(device: _device),
+        ProfileScreen(
+          userName: _userName,
+          cloudUser: _cloudUser,
+          cloudAuth: _cloudAuth,
+          status: _status,
+          pageCount: _pageCount,
+          sessionActive:
+              _status == ReaderConnectionStatus.connected ||
+              _status == ReaderConnectionStatus.busy,
+          onDisconnect: _disconnectFromPi,
+          onSignOut: _signOut,
+        ),
+      ],
     );
   }
 

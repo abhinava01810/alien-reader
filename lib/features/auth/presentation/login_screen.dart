@@ -59,7 +59,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _openRegister() async {
     final email = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => RegisterScreen(auth: _auth)),
+      MaterialPageRoute(
+        builder: (_) =>
+            RegisterScreen(auth: _auth, onLoggedIn: widget.onLoggedIn),
+      ),
     );
     if (email != null && mounted) {
       _email.text = email;

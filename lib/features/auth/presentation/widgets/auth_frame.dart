@@ -110,7 +110,8 @@ class AuthFrame extends StatelessWidget {
   }
 }
 
-/// Inline error banner used inside auth forms.
+/// Inline error banner used inside auth forms. Screen readers announce it
+/// as soon as it appears.
 class AuthErrorBanner extends StatelessWidget {
   const AuthErrorBanner(this.message, {super.key});
 
@@ -118,6 +119,16 @@ class AuthErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Its own accessibility node (container), so TalkBack announces it once
+    // when it appears instead of folding it into a nearby text field.
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      child: _banner(context),
+    );
+  }
+
+  Widget _banner(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.md),

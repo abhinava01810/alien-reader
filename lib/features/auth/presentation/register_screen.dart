@@ -4,13 +4,20 @@ import '../../../core/services/auth_service_cloud.dart';
 import '../../../core/services/cloud_api_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import 'verify_email_screen.dart';
 import 'widgets/auth_frame.dart';
 
-/// Creates an account, then returns to login with the email (pop result).
+/// Creates an account, asks for the 6-digit code from the verification
+/// email, then signs in. Leaving the code screen returns to login with the
+/// email filled in (pop result).
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key, this.auth});
+  const RegisterScreen({super.key, this.auth, this.onLoggedIn});
 
   final CloudAuthService? auth;
+
+  /// Signs the new account in once its email is verified. Without it the
+  /// screen returns to login with the email filled in.
+  final ValueChanged<CloudUser>? onLoggedIn;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -68,22 +75,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _loading = true;
       _error = null;
     });
+    final email = _email.text.trim();
     try {
-      final email = _email.text.trim();
       await _auth.register(_name.text, email, _password.text);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Check your email to verify your account.'),
-        ),
-      );
-      Navigator.of(context).pop(email);
     } on CloudApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
+      return;
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+    if (!mounted) return;
+
+    // Ask for the 6-digit code from the verification email.
+    var verified = false;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => VerifyEmailScreen(
+          email: email,
+          auth: _auth,
+          onVerified: (_) async {
+            verified = true;
+            await _signInAfterVerify(email);
+          },
+        ),
+      ),
+    );
+    // Left the code screen without verifying: back to login as before.
+    if (!verified && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Your email is not verified yet. After you log in, choose '
+            'Verify now at the top of the app.',
+          ),
+        ),
+      );
+      Navigator.of(context).pop(email);
+    }
+  }
+
+  /// Verified: sign straight in with the details just entered.
+  Future<void> _signInAfterVerify(String email) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final onLoggedIn = widget.onLoggedIn;
+    if (onLoggedIn != null) {
+      try {
+        final user = await _auth.login(email, _password.text);
+        _password.clear();
+        _confirm.clear();
+        navigator.popUntil((route) => route.isFirst);
+        onLoggedIn(user);
+        return;
+      } on CloudApiException {
+        // Verified, but signing in failed (e.g. offline): log in by hand.
+      }
+    }
+    _password.clear();
+    _confirm.clear();
+    navigator.pop(); // the code screen
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Email verified. Log in to continue.')),
+    );
+    if (mounted) navigator.pop(email);
   }
 
   @override

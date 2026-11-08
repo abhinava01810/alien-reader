@@ -70,13 +70,15 @@ class CloudAuthService {
     return CloudUser.fromJson(body as Map<String, dynamic>);
   }
 
+  /// Emails a new 6-digit verification code.
   Future<void> requestEmailVerification(String email) =>
       api.post('/auth/verify-email/request', json: {'email': email.trim()});
 
-  Future<CloudUser> confirmEmailVerification(String token) async {
+  /// Confirms the 6-digit code from the verification email.
+  Future<CloudUser> confirmEmailVerification(String email, String otp) async {
     final body = await api.post(
       '/auth/verify-email/confirm',
-      json: {'token': token.trim()},
+      json: {'email': email.trim(), 'otp': otp.trim()},
     );
     return CloudUser.fromJson(body as Map<String, dynamic>);
   }
