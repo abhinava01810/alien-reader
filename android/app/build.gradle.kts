@@ -53,6 +53,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Debug installs alongside the Play/release app instead of
+            // replacing it (different signing keys cannot replace each other).
+            applicationIdSuffix = ".debug"
+        }
         release {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
