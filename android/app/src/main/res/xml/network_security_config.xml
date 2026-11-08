@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Naadh reader serves plain HTTP on the local network:
+    - drpi2copy1.local (and other *.local names) on the home Wi-Fi
+    - 10.42.0.1, its setup hotspot
+    - any LAN address typed into "Advanced: device address" during setup
+  Android cannot allow cleartext by IP range (e.g. 192.168.x.x), so typed LAN
+  addresses need cleartext to be permitted in general. The cloud API is HTTPS
+  regardless. Only the system's certificate authorities are trusted.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">local</domain>
+        <domain includeSubdomains="false">10.42.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
