@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../domain/reader_device.dart';
+import 'reader_session_errors.dart';
 import 'services/pi_api_service.dart';
 
 class OcrFailureException implements Exception {
@@ -53,7 +54,9 @@ class RaspberryPiDevice implements ReaderDevice {
     }
   }
 
-  Future<void> startSession(String userName) async {
+  /// [takeOver]: end a session held by someone else.
+  /// Only after the person chose to.
+  Future<void> startSession(String userName, {bool takeOver = false}) async {
     _controller.add(ReaderConnectionStatus.connecting);
 
     try {
@@ -71,11 +74,20 @@ class RaspberryPiDevice implements ReaderDevice {
         throw Exception(result['message'] ?? 'Failed to start session');
       }
     } catch (e) {
-      // If Pi server is stuck in APP_ACTIVE from an un-ended session (HTTP 409),
-      // force end the orphaned session and retry once.
       final errStr = e.toString();
       if (errStr.contains('409') ||
           errStr.contains('being used by another user')) {
+        // Only end the open session if it is this
+        // user's own, or they chose to take over.
+        if (!takeOver) {
+          final holder = await _sessionHolder();
+          if (holder != userName.trim().toLowerCase()) {
+            _sessionId = null;
+            _accessToken = null;
+            _controller.add(ReaderConnectionStatus.disconnected);
+            throw ReaderInUseException(_holderName);
+          }
+        }
         try {
           await _apiService.endSession();
           await Future<void>.delayed(const Duration(milliseconds: 600));
@@ -93,6 +105,24 @@ class RaspberryPiDevice implements ReaderDevice {
       _accessToken = null;
       _controller.add(ReaderConnectionStatus.disconnected);
       rethrow;
+    }
+  }
+
+  String? _holderName;
+
+  /// Lower-cased display name of the reader's open
+  /// app session, or null if unknown.
+  Future<String?> _sessionHolder() async {
+    try {
+      final s = await _apiService.getStatus();
+      final name = s['status'] == 'APP_ACTIVE'
+          ? (s['display_name'] as String?)?.trim()
+          : null;
+      _holderName = name;
+      return name?.toLowerCase();
+    } catch (_) {
+      _holderName = null;
+      return null;
     }
   }
 
@@ -175,7 +205,7 @@ class RaspberryPiDevice implements ReaderDevice {
 
       if (status == 'FAILED') {
         final reason = data['reason'] as String?;
-        final message = data['message'] as String?;
+        final message = (data['error'] ?? data['message']) as String?;
         if (reason == 'text_not_detected') {
           throw OcrFailureException(
             message ??

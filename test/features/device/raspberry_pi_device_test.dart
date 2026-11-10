@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:alien_reader_app/features/device/data/raspberry_pi_device.dart';
+import 'package:alien_reader_app/features/device/data/reader_session_errors.dart';
 import 'package:alien_reader_app/features/device/data/services/pi_api_service.dart';
 import 'package:alien_reader_app/features/device/domain/reader_device.dart';
 
@@ -55,25 +56,94 @@ void main() {
       ]);
     });
 
-    test('409: ends the open session and retries once', () async {
-      final (device, sent) = _device({
-        'POST /session/start': [
-          _json({
-            'detail': 'Device is currently being used by another user.',
-          }, 409),
-          _json({'success': true, 'session_id': 's2'}),
-        ],
-        'POST /session/end': [
-          _json({'success': true}),
-        ],
-      });
-      await device.startSession('Abhinava');
+    Map<String, List<Object>> busy({Object? status}) => {
+      'POST /session/start': [
+        _json({
+          'detail': 'Device is currently being used by another user.',
+        }, 409),
+        _json({'success': true, 'session_id': 's2'}),
+      ],
+      'POST /session/end': [
+        _json({'success': true}),
+      ],
+      if (status != null) 'GET /status': [status],
+    };
+
+    test(
+      '409, open session is this user\'s own: ends it and retries',
+      () async {
+        final (device, sent) = _device(
+          busy(
+            status: _json({
+              'status': 'APP_ACTIVE',
+              'display_name': 'abhinava ',
+            }),
+          ),
+        );
+        await device.startSession('Abhinava');
+        expect(sent, [
+          'POST /session/start',
+          'GET /status',
+          'POST /session/end',
+          'POST /session/start',
+        ]);
+        expect(device.sessionId, 's2');
+      },
+    );
+
+    test('409, someone else\'s session: nothing ended, says who', () async {
+      final (device, sent) = _device(
+        busy(status: _json({'status': 'APP_ACTIVE', 'display_name': 'Priya'})),
+      );
+      final statuses = <ReaderConnectionStatus>[];
+      device.status.listen(statuses.add);
+      await expectLater(
+        device.startSession('Abhinava'),
+        throwsA(
+          isA<ReaderInUseException>()
+              .having((e) => e.holderName, 'holder', 'Priya')
+              .having(
+                (e) => e.message,
+                'message',
+                'This reader is in use by Priya.',
+              ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(sent, ['POST /session/start', 'GET /status']);
+      expect(sent, isNot(contains('POST /session/end')));
+      expect(device.sessionId, isNull);
+      expect(statuses.last, ReaderConnectionStatus.disconnected);
+    });
+
+    test('409, person chose to take over: ends it and retries', () async {
+      final (device, sent) = _device(
+        busy(status: _json({'status': 'APP_ACTIVE', 'display_name': 'Priya'})),
+      );
+      await device.startSession('Abhinava', takeOver: true);
       expect(sent, [
         'POST /session/start',
         'POST /session/end',
         'POST /session/start',
       ]);
       expect(device.sessionId, 's2');
+    });
+
+    test('409, status unreadable: treated as in use, nothing ended', () async {
+      final (device, sent) = _device(busy());
+      await expectLater(
+        device.startSession('Abhinava'),
+        throwsA(
+          isA<ReaderInUseException>()
+              .having((e) => e.holderName, 'holder', isNull)
+              .having(
+                (e) => e.message,
+                'message',
+                'This reader is in use by someone else.',
+              ),
+        ),
+      );
+      expect(sent, isNot(contains('POST /session/end')));
     });
 
     test('other errors: rethrown, disconnected, no retry', () async {
@@ -194,11 +264,34 @@ void main() {
       );
     });
 
-    test('FAILED with only an error field: generic message (current behaviour; '
-        'the reader sends "error", which is not read yet)', () async {
+    test(
+      "FAILED with the reader's error field: that message is shown",
+      () async {
+        final (device, _) = _device({
+          'GET /capture/2': [
+            _json({
+              'status': 'FAILED',
+              'error': 'Text not detected. Adjust the document and try again.',
+            }),
+          ],
+        });
+        await expectLater(
+          poll(device),
+          throwsA(
+            isA<Exception>().having(
+              (e) => '$e',
+              'm',
+              contains('Text not detected. Adjust the document and try again.'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test('FAILED with neither field: the generic message', () async {
       final (device, _) = _device({
         'GET /capture/2': [
-          _json({'status': 'FAILED', 'error': 'Text not detected.'}),
+          _json({'status': 'FAILED'}),
         ],
       });
       await expectLater(

@@ -15,6 +15,7 @@ import '../features/auth/presentation/verify_email_banner.dart';
 import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/device/data/device_events.dart';
 import '../features/device/data/raspberry_pi_device.dart';
+import '../features/device/data/reader_session_errors.dart';
 import '../features/device/data/services/device_storage_service.dart';
 import '../features/device/data/services/pi_api_service.dart';
 import '../features/device/data/services/reader_address.dart';
@@ -109,6 +110,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   /// The most recent processed capture, handed to the Output tab.
   SavedDocument? _latestOutput;
+
+  /// The last page processed in this reader session, by either path (the
+  /// reader or the phone), and its saved copy if saving worked. "Read N
+  /// pages" opens this; it is cleared when a new session starts.
+  DocumentOutput? _sessionOutput;
+  SavedDocument? _sessionSaved;
 
   int _pageCount = 0;
 
@@ -242,11 +249,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       // Find this reader on the network (its own name, a typed address,
       // or the old shared default) before starting the session there.
       await ReaderAddress.instance.resolve();
-      await _device.startSession(_userName!);
+      try {
+        await _device.startSession(_userName!);
+      } on ReaderInUseException catch (inUse) {
+        // Someone else's session: never end it without asking.
+        if (!mounted || !await _askToTakeOver(inUse)) rethrow;
+        await _device.startSession(_userName!, takeOver: true);
+      }
       // A new reader session restarts page numbers and drops older jobs, so
       // pages counted in an earlier session are no longer on the reader.
       _readerPageInFlight = null;
       _pageCount = 0;
+      _sessionOutput = null;
+      _sessionSaved = null;
       if (mounted) setState(() {});
 
       await _sessionStorage.saveSession(
@@ -277,10 +292,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Connection failed: $e. You can retry anytime.'),
-          backgroundColor: AppColors.danger,
-        ),
+        e is ReaderInUseException
+            ? SnackBar(content: Text('${e.message} Not connected.'))
+            : SnackBar(
+                content: Text('Connection failed: $e. You can retry anytime.'),
+                backgroundColor: AppColors.danger,
+              ),
       );
     } finally {
       if (mounted) {
@@ -289,6 +306,35 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         });
       }
     }
+  }
+
+  /// The reader has another person's session open. Taking over ends it.
+  Future<bool> _askToTakeOver(ReaderInUseException inUse) async {
+    final who = inUse.holderName;
+    final take = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reader in use'),
+        content: Text(
+          who == null || who.isEmpty
+              ? 'This reader is in use by someone else. Taking over ends '
+                    'their session.'
+              : "This reader is in use by $who. Taking over ends $who's "
+                    'session.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Take over'),
+          ),
+        ],
+      ),
+    );
+    return take ?? false;
   }
 
   @override
@@ -673,6 +719,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('[AppShell] Auto-save document failed: $e');
     }
+    _sessionOutput = output;
+    _sessionSaved = savedDoc;
 
     if (!mounted) return;
 
@@ -739,6 +787,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _cloudUser = null;
       _userName = null;
       _pageCount = 0;
+      _sessionOutput = null;
+      _sessionSaved = null;
       _status = ReaderConnectionStatus.disconnected;
       _tab = MainTab.home;
       _ocrFailureMessage = null;
@@ -758,9 +808,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   Future<void> _process() async {
     if (!mounted) return;
 
-    final capture = _device.lastCapture;
-
-    if (capture == null) {
+    // The last page processed this session, whichever path processed it
+    // (the reader's own "last capture" only knows about reader processing).
+    // It was saved when it was processed, so it is shown, not saved again.
+    final output = _sessionOutput;
+    if (output == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -772,7 +824,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       return;
     }
 
-    await _saveAndNavigateToResults(capture, _pageCount);
+    final saved = _sessionSaved;
+    if (saved != null) {
+      setState(() {
+        _latestOutput = saved;
+        _tab = MainTab.output;
+      });
+      return;
+    }
+    // Saving failed at the time: show it on its own page.
+    await Navigator.of(context).pushNamed(
+      AppRoutes.documentResults,
+      arguments: DocumentResultsArgs(output: output),
+    );
   }
 
   @override
